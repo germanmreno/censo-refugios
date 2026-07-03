@@ -10,6 +10,7 @@
     "./geo": "./geo/venezuela.json"
   },
   "scripts": {
+    "build": "echo \"(shared: no build needed — exports are consumed as .ts by backend/frontend)\"",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
