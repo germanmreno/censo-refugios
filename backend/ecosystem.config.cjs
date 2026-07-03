@@ -55,6 +55,7 @@ module.exports = {
       exec_mode: "fork",
       env: {
         PORT_FRONTEND: 3017,
+        FRONTEND_DIST_DIR: path.resolve(__dirname, "../frontend/dist"),
       },
       max_memory_restart: "200M",
       error_file: "/var/log/censo-refugios/frontend-error.log",

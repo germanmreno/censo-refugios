@@ -6,18 +6,48 @@
  * delante de este proceso.
  *
  * Variables de entorno:
- *   PORT_FRONTEND (default 3017)
+ *   PORT_FRONTEND       (default 3017)
+ *   FRONTEND_DIST_DIR   (opcional: ruta absoluta a la carpeta dist)
+ *
+ * Uso típico:
+ *   pm2 start ecosystem.config.cjs  # arranca con FRONTEND_DIST_DIR preconfigurado
  */
 
 import { createReadStream, statSync, existsSync } from "node:fs";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT_FRONTEND ?? 3017);
-// Raíz del frontend = directorio donde está este script. Acepta tanto
-// ejecución con cwd=frontend (PM2) como cwd=raíz del repo.
-const SCRIPT_DIR = new URL(".", import.meta.url).pathname.replace(/^\//, "");
-const ROOT = join(SCRIPT_DIR, "dist");
+
+// Resolución robusta del directorio dist/.
+// Probamos en orden:
+//   1. Variable de entorno FRONTEND_DIST_DIR
+//   2. <carpeta del script>/dist
+//   3. <cwd>/dist
+//   4. <cwd>/../frontend/dist (por si se ejecuta desde la raíz)
+function resolveDistDir() {
+  const candidates = [];
+  if (process.env.FRONTEND_DIST_DIR) {
+    candidates.push(process.env.FRONTEND_DIST_DIR);
+  }
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  candidates.push(join(__dirname, "dist"));
+  candidates.push(join(process.cwd(), "dist"));
+  candidates.push(resolve(process.cwd(), "../frontend/dist"));
+
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  // Si no existe, devolvemos la primera (la del script) para que el log
+  // muestre la ruta esperada, pero el server responderá 503 hasta que
+  // se haga `npm run build`.
+  return candidates[1];
+}
+
+const ROOT = resolveDistDir();
+const ROOT_RESOLVED = resolve(ROOT);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -55,7 +85,17 @@ const server = createServer((req, res) => {
     res.end();
     return;
   }
-  let filePath = safeJoin(ROOT, req.url);
+
+  // Si el dist/ no existe, devolver 503 con mensaje claro
+  if (!existsSync(ROOT_RESOLVED)) {
+    res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end(
+      `Frontend dist/ no encontrado en: ${ROOT}\nEjecuta 'npm run build' en la raíz del monorepo.\n`,
+    );
+    return;
+  }
+
+  let filePath = safeJoin(ROOT_RESOLVED, req.url);
   if (!filePath) {
     res.writeHead(403);
     res.end("Forbidden");
@@ -70,8 +110,17 @@ const server = createServer((req, res) => {
     // Continuar al fallback
   }
 
+  // SPA fallback: si el archivo no existe y no es un asset, devolver index.html
   if (!existsSync(filePath)) {
-    filePath = join(ROOT, "index.html");
+    const ext = extname(filePath).toLowerCase();
+    if (ext === "" || ext === ".html") {
+      filePath = join(ROOT_RESOLVED, "index.html");
+    } else {
+      // Es un asset (.css, .js, .png) que no existe → 404
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not Found");
+      return;
+    }
   }
 
   try {
@@ -83,15 +132,18 @@ const server = createServer((req, res) => {
     });
     createReadStream(filePath).pipe(res);
   } catch (e) {
-    res.writeHead(500);
-    res.end("Internal Server Error");
-    console.error("[frontend-static]", e);
+    console.error(`[frontend-static] Error sirviendo ${filePath}:`, e.message);
+    res.writeHead(500, { "Content-Type": "text/plain" });
+    res.end(`Internal Server Error: ${e.message}\n`);
   }
 });
 
 server.listen(PORT, () => {
-  if (!existsSync(ROOT)) {
-    console.warn(`[frontend-static] ADVERTENCIA: ${ROOT} no existe. Ejecuta "npm run build" en el frontend.`);
+  if (!existsSync(ROOT_RESOLVED)) {
+    console.warn(
+      `[frontend-static] ADVERTENCIA: ${ROOT} no existe. Ejecuta 'npm run build' en la raíz del monorepo.`,
+    );
+  } else {
+    console.log(`[frontend-static] Sirviendo ${ROOT} en http://localhost:${PORT}`);
   }
-  console.log(`[frontend-static] Sirviendo ${ROOT} en http://localhost:${PORT}`);
 });
