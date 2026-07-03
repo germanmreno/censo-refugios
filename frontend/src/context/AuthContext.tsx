@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { fetchMe, login as apiLogin, logout as apiLogout, type AuthUser } from "../api/auth";
-import { setAccessToken } from "../api/client";
+import { setAccessToken, restoreAccessToken } from "../api/client";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -26,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    // Restaurar access token guardado en localStorage (persiste ante F5)
+    restoreAccessToken();
     (async () => {
       try {
         const me = await fetchMe();

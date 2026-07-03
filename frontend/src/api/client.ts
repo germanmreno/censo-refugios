@@ -1,21 +1,38 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 const API_URL = "/api";
+const STORAGE_KEY = "censo:accessToken";
 
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
 
-let accessToken: string | null = null;
-
 export function setAccessToken(token: string | null) {
   accessToken = token;
+  if (token) {
+    try { localStorage.setItem(STORAGE_KEY, token); } catch { /* no-op */ }
+  } else {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* no-op */ }
+  }
 }
 
 export function getAccessToken() {
   return accessToken;
 }
+
+export function restoreAccessToken(): string | null {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      accessToken = saved;
+      return saved;
+    }
+  } catch { /* no-op */ }
+  return null;
+}
+
+let accessToken: string | null = null;
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (accessToken && config.headers) {
