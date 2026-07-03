@@ -70,6 +70,7 @@ refugiosRouter.get("/", async (req: Request, res: Response, next: NextFunction) 
         ubicacion: r.ubicacion,
         ocupacionActual: r._count.refugiados,
         aulas: r.modulos.flatMap((m) => m.aulas),
+        modulos: r.modulos,
       })),
     );
   } catch (err) {
@@ -225,7 +226,7 @@ refugiosRouter.post(
 
       await logAuditoria(req.user!.sub, "create", "refugio", refugio.id, { nombre });
 
-      res.status(201).json(refugio);
+      res.status(201).json(result);
     } catch (err) {
       next(err);
     }

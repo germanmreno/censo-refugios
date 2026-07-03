@@ -71,9 +71,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       tokenVersion: usuario.tokenVersion,
     });
 
+    const esSeguro = req.secure || req.headers["x-forwarded-proto"] === "https";
+
     res.cookie(REFRESH_COOKIE, refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: esSeguro,
       sameSite: "lax",
       // path "/api" para que la cookie esté disponible en /api/auth/* y cualquier
       // subruta. Aislar más el path es tentador pero rompe si en el futuro hay
