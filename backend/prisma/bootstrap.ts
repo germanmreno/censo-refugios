@@ -14,6 +14,13 @@
  *
  * El script extrae de DATABASE_URL el nombre de usuario, contraseña y
  * nombre de la base a crear. No hardcodea credenciales.
+ *
+ * Si PG_SUPERUSER_URL no está definida, el script intenta varias
+ * alternativas razonables antes de fallar:
+ *   1. PG_SUPERUSER_URL del .env
+ *   2. Conexión a `postgres` por socket Unix local (peer auth, típico en
+ *      Debian/Ubuntu cuando se ejecuta el script con `sudo -u postgres`)
+ *   3. Conexión `trust` a `localhost:5432/postgres` (entornos de CI)
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -33,13 +40,55 @@ function log(prefix: string, msg: string) {
   console.log(`[${prefix}] ${msg}`);
 }
 
+const FALLBACK_SUPERUSER_URLS = [
+  // peer auth: socket Unix sin password (servidor con `local all postgres peer`)
+  "postgresql://postgres@localhost/postgres?host=/var/run/postgresql",
+  // trust auth: localhost sin password (entornos de desarrollo)
+  "postgresql://postgres@localhost:5432/postgres?sslmode=disable",
+];
+
+async function connectAsSuperuser(): Promise<PrismaClient> {
+  const explicit = process.env.PG_SUPERUSER_URL;
+  const tried: string[] = [];
+
+  if (explicit) {
+    const c = new PrismaClient({ datasources: { db: { url: explicit } }, log: ["error"] });
+    try {
+      await c.$connect();
+      log("bootstrap", `Conectado como superusuario vía PG_SUPERUSER_URL.`);
+      return c;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      tried.push(`PG_SUPERUSER_URL: ${msg}`);
+      await c.$disconnect().catch(() => {});
+    }
+  }
+
+  for (const url of FALLBACK_SUPERUSER_URLS) {
+    const c = new PrismaClient({ datasources: { db: { url } }, log: ["error"] });
+    try {
+      await c.$connect();
+      log("bootstrap", `Conectado como superusuario vía fallback: ${url.replace(/:[^:@]+@/, ":***@")}`);
+      return c;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      tried.push(`${url}: ${msg}`);
+      await c.$disconnect().catch(() => {});
+    }
+  }
+
+  throw new Error(
+    "No se pudo conectar como superusuario de Postgres. Causas:\n  - " +
+      tried.join("\n  - ") +
+      "\n\nSolución: define PG_SUPERUSER_URL en backend/.env con una URL completa, " +
+      "o asigna contraseña al rol postgres: `sudo -u postgres psql -c \"ALTER USER postgres WITH PASSWORD 'xxx';\"`",
+  );
+}
+
 async function main() {
-  const superUrl = process.env.PG_SUPERUSER_URL;
   const appUrl = process.env.DATABASE_URL;
-  if (!superUrl || !appUrl) {
-    throw new Error(
-      "Faltan PG_SUPERUSER_URL o DATABASE_URL en el .env. Revisa backend/.env.",
-    );
+  if (!appUrl) {
+    throw new Error("Falta DATABASE_URL en el .env. Revisa backend/.env.");
   }
 
   const target = parsePgUrl(appUrl);
@@ -48,13 +97,7 @@ async function main() {
   }
 
   // ─── 1. Crear rol y base de datos con el superusuario ─────────────────────
-  const superClient = new PrismaClient({
-    datasources: { db: { url: superUrl } },
-    log: ["error", "warn"],
-  });
-
-  log("bootstrap", `Conectando como superusuario…`);
-  await superClient.$connect();
+  const superClient = await connectAsSuperuser();
 
   // ¿Ya existe el rol?
   const rolExiste = await superClient.$queryRawUnsafe<{ count: bigint }[]>(
@@ -90,10 +133,30 @@ async function main() {
   );
   if (Number(baseExiste[0]?.count ?? 0) > 0) {
     log("bootstrap", `Base de datos "${target.db}" ya existe.`);
-  // Reasignamos owner al rol target para que pueda ejecutar DDL (CREATE TABLE,
-  // ALTER TABLE, etc.) sin necesidad de superusuario.
-  log("bootstrap", `Reasignando owner de "${target.db}" a "${target.user}"…`);
-  await superClient.$executeRawUnsafe(`ALTER DATABASE "${target.db}" OWNER TO "${target.user}"`);
+    // Reasignamos owner al rol target para que pueda ejecutar DDL (CREATE TABLE,
+    // ALTER TABLE, etc.) sin necesidad de superusuario.
+    log("bootstrap", `Reasignando owner de "${target.db}" a "${target.user}"…`);
+    await superClient.$executeRawUnsafe(`ALTER DATABASE "${target.db}" OWNER TO "${target.user}"`);
+
+    // Verificar si el historial de Prisma está roto: si _prisma_migrations
+    // existe pero hay tablas que NO existen, las migraciones previas no se
+    // aplicaron realmente (puede pasar si la BD fue restaurada o recreada).
+    // En ese caso, truncar _prisma_migrations para que `prisma migrate deploy`
+    // pueda reintentar desde cero.
+    const histRoto = await superClient.$queryRawUnsafe<{ count: bigint }[]>(
+      `SELECT
+         (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema='public' AND table_name='_prisma_migrations') AS prisma_hist,
+         (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema='public' AND table_name='usuarios') AS tabla_usuarios`,
+    );
+    const histCount = Number(histRoto[0]?.prisma_hist ?? 0);
+    const usuariosCount = Number(histRoto[0]?.tabla_usuarios ?? 0);
+    if (histCount > 0 && usuariosCount === 0) {
+      log(
+        "bootstrap",
+        `⚠ Historial de Prisma huérfano detectado (_prisma_migrations existe pero 'usuarios' no). Truncando historial para reintentar migraciones.`,
+      );
+      await superClient.$executeRawUnsafe(`TRUNCATE TABLE "_prisma_migrations" RESTART IDENTITY`);
+    }
   } else {
     log("bootstrap", `Creando base de datos "${target.db}"…`);
     await superClient.$executeRawUnsafe(`CREATE DATABASE "${target.db}" OWNER "${target.user}"`);
