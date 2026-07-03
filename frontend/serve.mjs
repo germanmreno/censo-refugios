@@ -1,31 +1,33 @@
 /**
- * Servidor estático mínimo para el frontend, gestionado por PM2.
+ * Servidor estático para el frontend + proxy /api al backend.
  *
- * Sirve los archivos de frontend/dist/ en el puerto indicado, sin
- * compresión ni cache avanzado. Para producción se recomienda Nginx
- * delante de este proceso.
+ * - Sirve los archivos de frontend/dist/ en el puerto indicado.
+ * - Hace proxy de cualquier ruta /api/* hacia el backend en BACKEND_URL
+ *   (default http://localhost:3016), preservando método, headers y body.
  *
  * Variables de entorno:
- *   PORT_FRONTEND       (default 3017)
- *   FRONTEND_DIST_DIR   (opcional: ruta absoluta a la carpeta dist)
+ *   PORT_FRONTEND     (default 3017)
+ *   FRONTEND_DIST_DIR (opcional: ruta absoluta a la carpeta dist)
+ *   BACKEND_URL       (default http://localhost:3016)
  *
- * Uso típico:
- *   pm2 start ecosystem.config.cjs  # arranca con FRONTEND_DIST_DIR preconfigurado
+ * Para producción seria se recomienda Nginx (caché + compresión), pero
+ * este server basta para entornos internos y testing.
  */
 
-import { createReadStream, statSync, existsSync } from "node:fs";
+import {
+  createReadStream,
+  statSync,
+  existsSync,
+} from "node:fs";
 import { extname, join, normalize, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 
 const PORT = Number(process.env.PORT_FRONTEND ?? 3017);
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3016";
+const BACKEND = new URL(BACKEND_URL);
 
-// Resolución robusta del directorio dist/.
-// Probamos en orden:
-//   1. Variable de entorno FRONTEND_DIST_DIR
-//   2. <carpeta del script>/dist
-//   3. <cwd>/dist
-//   4. <cwd>/../frontend/dist (por si se ejecuta desde la raíz)
 function resolveDistDir() {
   const candidates = [];
   if (process.env.FRONTEND_DIST_DIR) {
@@ -40,9 +42,6 @@ function resolveDistDir() {
   for (const c of candidates) {
     if (existsSync(c)) return c;
   }
-  // Si no existe, devolvemos la primera (la del script) para que el log
-  // muestre la ruta esperada, pero el server responderá 503 hasta que
-  // se haga `npm run build`.
   return candidates[1];
 }
 
@@ -79,6 +78,33 @@ function safeJoin(root, urlPath) {
   return resolved;
 }
 
+function proxyToBackend(req, res) {
+  const isHttps = BACKEND.protocol === "https:";
+  const proxyLib = isHttps ? httpsRequest : httpRequest;
+  const options = {
+    hostname: BACKEND.hostname,
+    port: BACKEND.port || (isHttps ? 443 : 80),
+    method: req.method,
+    path: req.url,
+    headers: { ...req.headers, host: BACKEND.host },
+  };
+
+  const proxyReq = proxyLib(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on("error", (err) => {
+    console.error(`[frontend-static] proxy error: ${err.message}`);
+    if (!res.headersSent) {
+      res.writeHead(502, { "Content-Type": "text/plain" });
+    }
+    res.end(`Bad Gateway: ${err.message}\n`);
+  });
+
+  req.pipe(proxyReq);
+}
+
 const server = createServer((req, res) => {
   if (!req.url) {
     res.writeHead(400);
@@ -86,7 +112,13 @@ const server = createServer((req, res) => {
     return;
   }
 
-  // Si el dist/ no existe, devolver 503 con mensaje claro
+  // Proxy de /api/* al backend
+  if (req.url.startsWith("/api/") || req.url === "/api") {
+    proxyToBackend(req, res);
+    return;
+  }
+
+  // Si el dist/ no existe, devolver 503
   if (!existsSync(ROOT_RESOLVED)) {
     res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
     res.end(
@@ -110,13 +142,11 @@ const server = createServer((req, res) => {
     // Continuar al fallback
   }
 
-  // SPA fallback: si el archivo no existe y no es un asset, devolver index.html
   if (!existsSync(filePath)) {
     const ext = extname(filePath).toLowerCase();
     if (ext === "" || ext === ".html") {
       filePath = join(ROOT_RESOLVED, "index.html");
     } else {
-      // Es un asset (.css, .js, .png) que no existe → 404
       res.writeHead(404, { "Content-Type": "text/plain" });
       res.end("Not Found");
       return;
@@ -146,4 +176,5 @@ server.listen(PORT, () => {
   } else {
     console.log(`[frontend-static] Sirviendo ${ROOT} en http://localhost:${PORT}`);
   }
+  console.log(`[frontend-static] Proxy /api/* -> ${BACKEND_URL}`);
 });

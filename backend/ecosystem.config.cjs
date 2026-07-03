@@ -56,6 +56,7 @@ module.exports = {
       env: {
         PORT_FRONTEND: 3017,
         FRONTEND_DIST_DIR: path.resolve(__dirname, "../frontend/dist"),
+        BACKEND_URL: "http://localhost:3016",
       },
       max_memory_restart: "200M",
       error_file: "/var/log/censo-refugios/frontend-error.log",
