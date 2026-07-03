@@ -14,6 +14,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:bootstrap": "tsx prisma/bootstrap.ts",
+    "env:setup": "tsx prisma/env-setup.ts",
     "db:seed": "tsx prisma/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest"
