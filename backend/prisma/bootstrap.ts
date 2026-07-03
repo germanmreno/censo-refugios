@@ -132,34 +132,83 @@ async function main() {
     target.db,
   );
   if (Number(baseExiste[0]?.count ?? 0) > 0) {
-    log("bootstrap", `Base de datos "${target.db}" ya existe.`);
-    // Reasignamos owner al rol target para que pueda ejecutar DDL (CREATE TABLE,
-    // ALTER TABLE, etc.) sin necesidad de superusuario.
-    log("bootstrap", `Reasignando owner de "${target.db}" a "${target.user}"…`);
-    await superClient.$executeRawUnsafe(`ALTER DATABASE "${target.db}" OWNER TO "${target.user}"`);
-
-    // Verificar si el historial de Prisma está roto: si _prisma_migrations
-    // existe pero hay tablas que NO existen, las migraciones previas no se
-    // aplicaron realmente (puede pasar si la BD fue restaurada o recreada).
-    // En ese caso, truncar _prisma_migrations para que `prisma migrate deploy`
-    // pueda reintentar desde cero.
-    const histRoto = await superClient.$queryRawUnsafe<{ count: bigint }[]>(
-      `SELECT
-         (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema='public' AND table_name='_prisma_migrations') AS prisma_hist,
-         (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema='public' AND table_name='usuarios') AS tabla_usuarios`,
-    );
-    const histCount = Number(histRoto[0]?.prisma_hist ?? 0);
-    const usuariosCount = Number(histRoto[0]?.tabla_usuarios ?? 0);
-    if (histCount > 0 && usuariosCount === 0) {
+    // BOOTSTRAP_RESET=1 → destruye la BD y la recrea desde cero. Útil cuando
+    // el historial de Prisma está corrupto o la BD está en un estado irrecuperable.
+    // PELIGRO: borra todos los datos. Sólo usar en desarrollo o recovery.
+    if (process.env.BOOTSTRAP_RESET === "1") {
       log(
         "bootstrap",
-        `⚠ Historial de Prisma huérfano detectado (_prisma_migrations existe pero 'usuarios' no). Truncando historial para reintentar migraciones.`,
+        `⚠ BOOTSTRAP_RESET=1: terminando conexiones a "${target.db}" y eliminándola…`,
       );
-      await superClient.$executeRawUnsafe(`TRUNCATE TABLE "_prisma_migrations" RESTART IDENTITY`);
+      // Terminar conexiones activas (necesario antes de DROP DATABASE)
+      await superClient.$executeRawUnsafe(
+        `SELECT pg_terminate_backend(pid)
+         FROM pg_stat_activity
+         WHERE datname = $1 AND pid <> pg_backend_pid()`,
+        target.db,
+      );
+      await superClient.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${target.db}"`);
+      log("bootstrap", `Base de datos "${target.db}" eliminada.`);
+    } else {
+      log("bootstrap", `Base de datos "${target.db}" ya existe.`);
+      // Reasignamos owner al rol target para que pueda ejecutar DDL (CREATE TABLE,
+      // ALTER TABLE, etc.) sin necesidad de superusuario.
+      log("bootstrap", `Reasignando owner de "${target.db}" a "${target.user}"…`);
+      await superClient.$executeRawUnsafe(`ALTER DATABASE "${target.db}" OWNER TO "${target.user}"`);
+
+      // Detectar estado inconsistente del historial de Prisma. Esto sucede
+      // cuando la BD fue recreada, restaurada parcialmente o quedó a medio
+      // aplicar. Los síntomas son:
+      //   a) _prisma_migrations existe pero la tabla principal `usuarios` no
+      //   b) Hay filas con finished_at NULL (migraciones a medio aplicar)
+      //   c) Hay filas con finished_at NOT NULL pero rolled_back_at NOT NULL
+      // En todos esos casos truncamos el historial para que `prisma migrate
+      // deploy` pueda reintentar desde cero.
+      const estadoHist = await superClient.$queryRawUnsafe<{
+        prisma_hist: number;
+        tabla_usuarios: number;
+        filas_failed: number;
+        filas_incompletas: number;
+      }[]>(
+        `SELECT
+           (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema='public' AND table_name='_prisma_migrations') AS prisma_hist,
+           (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema='public' AND table_name='usuarios') AS tabla_usuarios,
+           (SELECT COUNT(*)::int FROM "_prisma_migrations" WHERE finished_at IS NULL) AS filas_failed,
+           (SELECT COUNT(*)::int FROM "_prisma_migrations" WHERE rolled_back_at IS NOT NULL) AS filas_incompletas`,
+      );
+      const e = estadoHist[0] ?? {
+        prisma_hist: 0,
+        tabla_usuarios: 0,
+        filas_failed: 0,
+        filas_incompletas: 0,
+      };
+      const huérfano = e.prisma_hist > 0 && e.tabla_usuarios === 0;
+      const roto = e.filas_failed > 0 || e.filas_incompletas > 0;
+      if (huérfano || roto) {
+        log(
+          "bootstrap",
+          `⚠ Historial de Prisma inconsistente (huérfano=${huérfano}, fallidas=${e.filas_failed}, incompletas=${e.filas_incompletas}). Truncando historial…`,
+        );
+        // Terminar conexiones para que el TRUNCATE no quede bloqueado
+        await superClient.$executeRawUnsafe(
+          `SELECT pg_terminate_backend(pid)
+           FROM pg_stat_activity
+           WHERE datname = $1 AND pid <> pg_backend_pid()`,
+          target.db,
+        );
+        await superClient.$executeRawUnsafe(
+          `TRUNCATE TABLE "_prisma_migrations" RESTART IDENTITY`,
+        );
+        log("bootstrap", `Historial truncado. Las migraciones se aplicarán desde cero.`);
+      }
     }
-  } else {
+  }
+
+  if (Number(baseExiste[0]?.count ?? 0) === 0 || process.env.BOOTSTRAP_RESET === "1") {
     log("bootstrap", `Creando base de datos "${target.db}"…`);
-    await superClient.$executeRawUnsafe(`CREATE DATABASE "${target.db}" OWNER "${target.user}"`);
+    await superClient.$executeRawUnsafe(
+      `CREATE DATABASE "${target.db}" OWNER "${target.user}"`,
+    );
   }
 
   // Otorgar privilegios totales sobre la base al rol de la app.
