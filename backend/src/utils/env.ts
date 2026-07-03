@@ -34,10 +34,17 @@ export function loadEnv() {
     }
   }
 
+  // CORS_ORIGIN acepta uno o varios orígenes separados por coma.
+  // "*" deshabilita la restricción (sólo para desarrollo interno).
+  const corsOrigins = process.env.CORS_ORIGIN!
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   return {
     port: Number(process.env.PORT),
     nodeEnv: process.env.NODE_ENV!,
     isProd: process.env.NODE_ENV === "production",
-    corsOrigin: process.env.CORS_ORIGIN!,
+    corsOrigins,
   };
 }

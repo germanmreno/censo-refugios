@@ -75,7 +75,10 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      path: "/api/auth",
+      // path "/api" para que la cookie esté disponible en /api/auth/* y cualquier
+      // subruta. Aislar más el path es tentador pero rompe si en el futuro hay
+      // otros endpoints que necesiten leer el refresh (rotación, etc.).
+      path: "/api",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -134,7 +137,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
 
 export async function logout(_req: Request, res: Response, next: NextFunction) {
   try {
-    res.clearCookie(REFRESH_COOKIE, { path: "/api/auth" });
+    res.clearCookie(REFRESH_COOKIE, { path: "/api" });
     res.json({ ok: true });
   } catch (err) {
     next(err);

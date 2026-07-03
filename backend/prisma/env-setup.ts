@@ -20,7 +20,7 @@
 
 import "dotenv/config";
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ENV_PATH = resolve(process.cwd(), ".env");
@@ -101,7 +101,10 @@ function main() {
 # ─── Servidor ────────────────────────────────────────────────────────────────
 NODE_ENV="production"
 PORT=3016
-CORS_ORIGIN="http://localhost:3017"
+# CORS_ORIGIN acepta uno o varios orígenes separados por coma.
+# Incluye los hosts comunes (localhost para testing y el dominio
+# corporativo real del proyecto). Ajusta según tu entorno.
+CORS_ORIGIN="http://localhost:3017,http://localhost:5173,http://correspondencia.cvm.com.ve:3017,https://correspondencia.cvm.com.ve"
 
 # ─── Base de datos PostgreSQL ────────────────────────────────────────────────
 DATABASE_URL="${existingDb}"
@@ -123,7 +126,6 @@ ADMIN_PASSWORD="${adminPassword}"
   writeFileSync(ENV_PATH, content, { encoding: "utf8" });
   // Permisos 600
   try {
-    const { chmodSync } = require("node:fs");
     chmodSync(ENV_PATH, 0o600);
   } catch {
     // En Windows chmod puede no funcionar; ignorar.

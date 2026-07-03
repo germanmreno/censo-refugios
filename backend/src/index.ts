@@ -14,15 +14,24 @@ import { auditoriaRouter } from "./routes/auditoria.js";
 import { verificacionRouter } from "./routes/verificacion.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
-const { port, nodeEnv, isProd, corsOrigin } = loadEnv();
+const { port, nodeEnv, isProd, corsOrigins } = loadEnv();
 
 const app = express();
 
 app.set("trust proxy", 1);
 app.use(helmet());
+
+// CORS: aceptamos una lista de orígenes separados por coma en CORS_ORIGIN.
+// Si el origin de la request está en la lista (o la lista contiene "*"),
+// permitimos credenciales. Si no, devolvemos 403 sin CORS headers.
 app.use(
   cors({
-    origin: corsOrigin,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // mismo origin (server-to-server, fetch sin origin)
+      if (corsOrigins.includes("*")) return callback(null, true);
+      if (corsOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`Origen no permitido por CORS: ${origin}`));
+    },
     credentials: true,
   }),
 );
