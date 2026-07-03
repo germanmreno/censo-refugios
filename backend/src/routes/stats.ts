@@ -40,7 +40,12 @@ statsRouter.get("/", async (req: Request, res: Response, next: NextFunction) => 
       capacidadTotal,
       disponibles: Math.max(0, capacidadTotal - totalRefugiados),
       porcentajeOcupacion: capacidadTotal > 0 ? Math.round((totalRefugiados / capacidadTotal) * 100) : 0,
-      refugios: refugios.map((r) => ({
+      refugios: refugios.map((r: {
+        id: string;
+        nombre: string;
+        capacidadEstimada: number;
+        _count: { refugiados: number };
+      }) => ({
         id: r.id,
         nombre: r.nombre,
         capacidadEstimada: r.capacidadEstimada,

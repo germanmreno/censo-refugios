@@ -132,7 +132,12 @@ refugiosRouter.get("/:id/ocupacion", async (req: Request, res: Response, next: N
         refugio.capacidadEstimada > 0
           ? Math.round((total / refugio.capacidadEstimada) * 100)
           : 0,
-      aulas: aulas.map((a) => ({
+      aulas: aulas.map((a: {
+        id: string;
+        nombre: string;
+        capacidad: number | null;
+        _count: { refugiados: number };
+      }) => ({
         id: a.id,
         nombre: a.nombre,
         capacidad: a.capacidad,
