@@ -16,6 +16,7 @@
     "db:bootstrap": "tsx prisma/bootstrap.ts",
     "env:setup": "tsx prisma/env-setup.ts",
     "db:seed": "tsx prisma/seed.ts",
+    "db:admin:reset": "tsx prisma/admin-reset.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
