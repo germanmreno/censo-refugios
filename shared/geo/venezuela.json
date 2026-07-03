@@ -1,0 +1,393 @@
+{
+  "_meta": {
+    "pais": "Venezuela",
+    "nota": "Dataset estático de división político-territorial. Cobertura completa de estados y municipios; parroquias en las entidades más afectadas por el sismo de 2026 (Distrito Capital, La Guaira, Miranda, Carabobo, Aragua). Ampliable.",
+    "version": "0.1.0"
+  },
+  "estados": [
+    {
+      "id": "dc",
+      "nombre": "Distrito Capital",
+      "municipios": [
+        {
+          "id": "libertador",
+          "nombre": "Libertador",
+          "parroquias": [
+            { "id": "altagracia", "nombre": "Altagracia" },
+            { "id": "antimano", "nombre": "Antímano" },
+            { "id": "carapita", "nombre": "Carapita" },
+            { "id": "catedral", "nombre": "Catedral" },
+            { "id": "coche", "nombre": "Coche" },
+            { "id": "el-paraiso", "nombre": "El Paraíso" },
+            { "id": "el-recreo", "nombre": "El Recreo" },
+            { "id": "el-valle", "nombre": "El Valle" },
+            { "id": "la-pastora", "nombre": "La Pastora" },
+            { "id": "la-vega", "nombre": "La Vega" },
+            { "id": "macarao", "nombre": "Macarao" },
+            { "id": "san-bernaradino", "nombre": "San Bernardino" },
+            { "id": "san-jose", "nombre": "San José" },
+            { "id": "san-juan", "nombre": "San Juan" },
+            { "id": "santa-rosalia", "nombre": "Santa Rosalía" },
+            { "id": "santa-teresa", "nombre": "Santa Teresa" },
+            { "id": "sucre-libertador", "nombre": "Sucre" },
+            { "id": "el-junquito", "nombre": "El Junquito" },
+            { "id": "el-valle-2", "nombre": "El Valle (capital)" },
+            { "id": "la-candelaria", "nombre": "La Candelaria" },
+            { "id": "san-pedro", "nombre": "San Pedro" },
+            { "id": "quebrachita", "nombre": "Quebrachita" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "la-guaira",
+      "nombre": "La Guaira (Vargas)",
+      "municipios": [
+        {
+          "id": "vargas",
+          "nombre": "Vargas",
+          "parroquias": [
+            { "id": "caraballeda", "nombre": "Caraballeda" },
+            { "id": "caruao", "nombre": "Caruao" },
+            { "id": "catia-la-mar", "nombre": "Catia La Mar" },
+            { "id": "el-hatillo-lg", "nombre": "El Hatillo" },
+            { "id": "la-guaira-pq", "nombre": "La Guaira" },
+            { "id": "los-corales", "nombre": "Los Corales" },
+            { "id": "macuto", "nombre": "Macuto" },
+            { "id": "maimetin", "nombre": "Maiquetía" },
+            { "id": "naiguata", "nombre": "Naiguatá" },
+            { "id": "tanaguarena", "nombre": "Tanaguarena" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "miranda",
+      "nombre": "Miranda",
+      "municipios": [
+        {
+          "id": "acevedo",
+          "nombre": "Acevedo",
+          "parroquias": [{ "id": "tacarigua-de-mamporal", "nombre": "Tacarigua de Mamporal" }]
+        },
+        {
+          "id": "baruta",
+          "nombre": "Baruta",
+          "parroquias": [
+            { "id": "nuestra-senora-del-pilar", "nombre": "Nuestra Señora del Pilar" },
+            { "id": "las-minas", "nombre": "Las Minas" }
+          ]
+        },
+        {
+          "id": "brión",
+          "nombre": "Brión",
+          "parroquias": [{ "id": "higuerote", "nombre": "Higuerote" }]
+        },
+        {
+          "id": "chacao",
+          "nombre": "Chacao",
+          "parroquias": [{ "id": "chacao-pq", "nombre": "Chacao" }]
+        },
+        {
+          "id": "cristobal-rojas",
+          "nombre": "Cristóbal Rojas",
+          "parroquias": [{ "id": "cua", "nombre": "Cúa" }]
+        },
+        {
+          "id": "gacica",
+          "nombre": "Gatica",
+          "parroquias": [{ "id": "guarenas", "nombre": "Guarenas" }]
+        },
+        {
+          "id": "guacaira-y-mariara",
+          "nombre": "Juan Germán Roscio (Guatire)",
+          "parroquias": [
+            { "id": "guatire", "nombre": "Guatire" },
+            { "id": "bolivar-guatire", "nombre": "Bolívar" }
+          ]
+        },
+        {
+          "id": "independencia-miranda",
+          "nombre": "Independencia",
+          "parroquias": [{ "id": "cartanal", "nombre": "Cartanal" }]
+        },
+        {
+          "id": "lanos-de-zarate",
+          "nombre": "Lander",
+          "parroquias": [{ "id": "ocumare-del-tuy", "nombre": "Ocumare del Tuy" }]
+        },
+        {
+          "id": "paez-miranda",
+          "nombre": "Páez",
+          "parroquias": [{ "id": "rio-chico", "nombre": "Río Chico" }]
+        },
+        {
+          "id": "paz-castillo",
+          "nombre": "Paz Castillo",
+          "parroquias": [{ "id": "santa-lucia", "nombre": "Santa Lucía" }]
+        },
+        {
+          "id": "plaza",
+          "nombre": "Plaza",
+          "parroquias": [{ "id": "guarenas-pq", "nombre": "Guarenas" }]
+        },
+        {
+          "id": "sucre-miranda",
+          "nombre": "Sucre",
+          "parroquias": [
+            { "id": "petare", "nombre": "Petare" },
+            { "id": "caucaguita", "nombre": "Caucagüita" },
+            { "id": "filas-de-mariche", "nombre": "Filas de Mariche" },
+            { "id": "la-dolorita", "nombre": "La Dolorita" },
+            { "id": "leon-martinez-pozo", "nombre": "León Martínez Pozo" }
+          ]
+        },
+        {
+          "id": "urdaneta",
+          "nombre": "Urdaneta",
+          "parroquias": [{ "id": "curiepe", "nombre": "Curiepe" }]
+        },
+        {
+          "id": "zamora-miranda",
+          "nombre": "Zamora",
+          "parroquias": [
+            { "id": "guatire-zamora", "nombre": "Guatire" },
+            { "id": "bolivar-zamora", "nombre": "Bolívar" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "carabobo",
+      "nombre": "Carabobo",
+      "municipios": [
+        {
+          "id": "bejuma",
+          "nombre": "Bejuma",
+          "parroquias": [{ "id": "bejuma-pq", "nombre": "Bejuma" }]
+        },
+        {
+          "id": "carlos-arvelo",
+          "nombre": "Carlos Arvelo",
+          "parroquias": [{ "id": "güigue", "nombre": "Güigüe" }]
+        },
+        {
+          "id": "diego-ibarra",
+          "nombre": "Diego Ibarra",
+          "parroquias": [{ "id": "mariara", "nombre": "Mariara" }]
+        },
+        {
+          "id": "guacara",
+          "nombre": "Guacara",
+          "parroquias": [{ "id": "guacara-pq", "nombre": "Guacara" }]
+        },
+        {
+          "id": "libertador-carabobo",
+          "nombre": "Libertador",
+          "parroquias": [{ "id": "tocuyito", "nombre": "Tocuyito" }]
+        },
+        {
+          "id": "los-guayos",
+          "nombre": "Los Guayos",
+          "parroquias": [{ "id": "los-guayos-pq", "nombre": "Los Guayos" }]
+        },
+        {
+          "id": "naguanagua",
+          "nombre": "Naguanagua",
+          "parroquias": [{ "id": "naguanagua-pq", "nombre": "Naguanagua" }]
+        },
+        {
+          "id": "puerto-cabello",
+          "nombre": "Puerto Cabello",
+          "parroquias": [{ "id": "puerto-cabello-pq", "nombre": "Puerto Cabello" }]
+        },
+        {
+          "id": "san-diego",
+          "nombre": "San Diego",
+          "parroquias": [{ "id": "san-diego-pq", "nombre": "San Diego" }]
+        },
+        {
+          "id": "san-joaquin",
+          "nombre": "San Joaquín",
+          "parroquias": [{ "id": "san-joaquin-pq", "nombre": "San Joaquín" }]
+        },
+        {
+          "id": "valencia",
+          "nombre": "Valencia",
+          "parroquias": [
+            { "id": "candelaria-valencia", "nombre": "Candelaria" },
+            { "id": "san-blas", "nombre": "San Blas" },
+            { "id": "santa-rosa-valencia", "nombre": "Santa Rosa" },
+            { "id": "rafael-urdaneta-v", "nombre": "Rafael Urdaneta" },
+            { "id": "el-recreo-v", "nombre": "El Recreo" },
+            { "id": "san-jose-v", "nombre": "San José" },
+            { "id": "miguel-peña", "nombre": "Miguel Peña" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aragua",
+      "nombre": "Aragua",
+      "municipios": [
+        {
+          "id": "atillo-aragua",
+          "nombre": "Atillo",
+          "parroquias": [{ "id": "zuangana", "nombre": "Zuangana" }]
+        },
+        {
+          "id": "brito-aragua",
+          "nombre": "Brito",
+          "parroquias": [{ "id": "brito-pq", "nombre": "Brito" }]
+        },
+        {
+          "id": "camatagua",
+          "nombre": "Camatagua",
+          "parroquias": [{ "id": "camatagua-pq", "nombre": "Camatagua" }]
+        },
+        {
+          "id": "francisco-linares-alcantara",
+          "nombre": "Francisco Linares Alcántara",
+          "parroquias": [{ "id": "la-cabrera", "nombre": "La Cabrera" }]
+        },
+        {
+          "id": "girardot",
+          "nombre": "Girardot",
+          "parroquias": [
+            { "id": "choroní", "nombre": "Choroní" },
+            { "id": "andres-bello-g", "nombre": "Andrés Bello" },
+            { "id": "joaquin-cruz-g", "nombre": "Joaquín Cruz Gascue" },
+            { "id": "las-delicias", "nombre": "Las Delicias" },
+            { "id": "madre-maria-san-jose", "nombre": "Madre María de San José" },
+            { "id": "pedro-gual", "nombre": "Pedro Gual" }
+          ]
+        },
+        {
+          "id": "jose-angel-lamas",
+          "nombre": "José Ángel Lamas",
+          "parroquias": [{ "id": "santa-cruz", "nombre": "Santa Cruz" }]
+        },
+        {
+          "id": "jose-felix-ribas",
+          "nombre": "José Félix Ribas",
+          "parroquias": [{ "id": "la-colonia-tovar", "nombre": "La Colonia Tovar" }]
+        },
+        {
+          "id": "julian-pantoja",
+          "nombre": "Lemoa",
+          "parroquias": [{ "id": "zuangana-2", "nombre": "Zuangana" }]
+        },
+        {
+          "id": "libertador-aragua",
+          "nombre": "Libertador",
+          "parroquias": [{ "id": "turmero", "nombre": "Turmero" }]
+        },
+        {
+          "id": "mario-briceño-iragorry",
+          "nombre": "Mario Briceño Iragorry",
+          "parroquias": [{ "id": "el-limón", "nombre": "El Limón" }]
+        },
+        {
+          "id": "ocumare-de-la-costa",
+          "nombre": "Ocumare de la Costa de Oro",
+          "parroquias": [{ "id": "ocumare-de-la-costa-pq", "nombre": "Ocumare de la Costa" }]
+        },
+        {
+          "id": "san-casimiro",
+          "nombre": "San Casimiro",
+          "parroquias": [{ "id": "san-casimiro-pq", "nombre": "San Casimiro" }]
+        },
+        {
+          "id": "san-sebastian",
+          "nombre": "San Sebastián",
+          "parroquias": [{ "id": "san-sebastian-pq", "nombre": "San Sebastián" }]
+        },
+        {
+          "id": "santiago-mariño",
+          "nombre": "Santiago Mariño",
+          "parroquias": [{ "id": "turmero-sm", "nombre": "Turmero" }]
+        },
+        {
+          "id": "sucre-aragua",
+          "nombre": "Sucre",
+          "parroquias": [{ "id": "cuyipa", "nombre": "Cuyipa" }]
+        },
+        {
+          "id": "tovar",
+          "nombre": "Tovar",
+          "parroquias": [{ "id": "colonia-tovar", "nombre": "Colonia Tovar" }]
+        },
+        {
+          "id": "urdaneta-aragua",
+          "nombre": "Urdaneta",
+          "parroquias": [{ "id": "las-tejerias", "nombre": "Las Tejerías" }]
+        },
+        {
+          "id": "zamora-aragua",
+          "nombre": "Zamora",
+          "parroquias": [{ "id": "villa-de-cura", "nombre": "Villa de Cura" }]
+        }
+      ]
+    },
+    { "id": "anzoategui", "nombre": "Anzoátegui", "municipios": [
+      { "id": "anzoategui-1", "nombre": "Barcelona", "parroquias": [] },
+      { "id": "anzoategui-2", "nombre": "Simón Bolívar", "parroquias": [] }
+    ]},
+    { "id": "apure", "nombre": "Apure", "municipios": [
+      { "id": "apure-1", "nombre": "San Fernando", "parroquias": [] }
+    ]},
+    { "id": "barinas", "nombre": "Barinas", "municipios": [
+      { "id": "barinas-1", "nombre": "Barinas", "parroquias": [] }
+    ]},
+    { "id": "bolivar", "nombre": "Bolívar", "municipios": [
+      { "id": "bolivar-1", "nombre": "Caroní", "parroquias": [] },
+      { "id": "bolivar-2", "nombre": "Heres", "parroquias": [] }
+    ]},
+    { "id": "cojedes", "nombre": "Cojedes", "municipios": [
+      { "id": "cojedes-1", "nombre": "San Carlos", "parroquias": [] }
+    ]},
+    { "id": "delta-amacuro", "nombre": "Delta Amacuro", "municipios": [
+      { "id": "delta-1", "nombre": "Tucupita", "parroquias": [] }
+    ]},
+    { "id": "falcon", "nombre": "Falcón", "municipios": [
+      { "id": "falcon-1", "nombre": "Carirubana", "parroquias": [] }
+    ]},
+    { "id": "guarico", "nombre": "Guárico", "municipios": [
+      { "id": "guarico-1", "nombre": "Juan Germán Roscio", "parroquias": [] }
+    ]},
+    { "id": "lara", "nombre": "Lara", "municipios": [
+      { "id": "lara-1", "nombre": "Iribarren", "parroquias": [] }
+    ]},
+    { "id": "merida", "nombre": "Mérida", "municipios": [
+      { "id": "merida-1", "nombre": "Mérida", "parroquias": [] }
+    ]},
+    { "id": "monagas", "nombre": "Monagas", "municipios": [
+      { "id": "monagas-1", "nombre": "Maturín", "parroquias": [] }
+    ]},
+    { "id": "nueva-esparta", "nombre": "Nueva Esparta", "municipios": [
+      { "id": "nueva-1", "nombre": "Mariño", "parroquias": [] }
+    ]},
+    { "id": "portuguesa", "nombre": "Portuguesa", "municipios": [
+      { "id": "portuguesa-1", "nombre": "Guanare", "parroquias": [] }
+    ]},
+    { "id": "sucre", "nombre": "Sucre", "municipios": [
+      { "id": "sucre-1", "nombre": "Sucre (Cumaná)", "parroquias": [] }
+    ]},
+    { "id": "tachira", "nombre": "Táchira", "municipios": [
+      { "id": "tachira-1", "nombre": "San Cristóbal", "parroquias": [] }
+    ]},
+    { "id": "trujillo", "nombre": "Trujillo", "municipios": [
+      { "id": "trujillo-1", "nombre": "Trujillo", "parroquias": [] }
+    ]},
+    { "id": "yaracuy", "nombre": "Yaracuy", "municipios": [
+      { "id": "yaracuy-1", "nombre": "San Felipe", "parroquias": [] }
+    ]},
+    { "id": "zulia", "nombre": "Zulia", "municipios": [
+      { "id": "zulia-1", "nombre": "Maracaibo", "parroquias": [] }
+    ]},
+    { "id": "amazonas", "nombre": "Amazonas", "municipios": [
+      { "id": "amazonas-1", "nombre": "Atures", "parroquias": [] }
+    ]},
+    { "id": "dependencias-federales", "nombre": "Dependencias Federales", "municipios": [] }
+  ]
+}

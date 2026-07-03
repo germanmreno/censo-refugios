@@ -1,0 +1,31 @@
+{
+  "name": "censo-refugios",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de censo de refugios — Terremoto Venezuela 2026",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace shared && npm run build --workspace backend && npm run build --workspace frontend",
+    "start": "npm run start --workspace backend",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace backend",
+    "db:migrate:dev": "npm run db:migrate:dev --workspace backend",
+    "db:seed": "npm run db:seed --workspace backend",
+    "db:generate": "npm run db:generate --workspace backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

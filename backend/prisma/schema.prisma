@@ -1,0 +1,160 @@
+// Censo de Refugios — Terremoto Venezuela 2026
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Usuarios y accesos
+// ─────────────────────────────────────────────
+
+model Usuario {
+  id           String   @id @default(uuid())
+  cedula       String   @unique
+  nombre       String
+  apellido     String
+  passwordHash String   @map("password_hash")
+  rol          String   @default("funcionario") // funcionario | administrador
+  activo       Boolean  @default(true)
+  tokenVersion Int      @default(0) @map("token_version")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  refugiosPermitidos UsuarioRefugio[]
+  refugiadosRegistrados Refugiado[] @relation("RefugiadoRegistradoPor")
+  auditoria            Auditoria[]
+
+  @@map("usuarios")
+}
+
+model UsuarioRefugio {
+  id        String   @id @default(uuid())
+  usuarioId String   @map("usuario_id")
+  refugioId String   @map("refugio_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  refugio  Refugio  @relation(fields: [refugioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, refugioId])
+  @@index([refugioId])
+  @@map("usuario_refugios")
+}
+
+// ─────────────────────────────────────────────
+// Refugios y aulas
+// ─────────────────────────────────────────────
+
+model Refugio {
+  id                String   @id @default(uuid())
+  nombre            String
+  capacidadEstimada Int      @map("capacidad_estimada")
+  ubicacion         String
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  aulas             Aula[]
+  refugiados        Refugiado[]
+  funcionarios      UsuarioRefugio[]
+
+  @@map("refugios")
+}
+
+model Aula {
+  id        String   @id @default(uuid())
+  refugioId String   @map("refugio_id")
+  nombre    String
+  capacidad Int?
+
+  refugio   Refugio    @relation(fields: [refugioId], references: [id], onDelete: Cascade)
+  refugiados Refugiado[]
+
+  @@index([refugioId])
+  @@map("aulas")
+}
+
+// ─────────────────────────────────────────────
+// Refugiados (tabla central del censo)
+// ─────────────────────────────────────────────
+
+model Refugiado {
+  id              String   @id @default(uuid())
+  refugioId       String   @map("refugio_id")
+  aulaId          String?  @map("aula_id")
+
+  // Datos del refugiado
+  origen          String
+  jefeFamilia     Boolean  @map("jefe_familia")
+  jefeFamiliaId   String?  @map("jefe_familia_id")
+  parentesco      String?  // conyuge | hijo | sobrino | familiar
+  nombre          String
+  apellido        String
+  nacionalidadCedula String? @map("nacionalidad_cedula") // V | E
+  cedula          String?
+  telefono        String?
+  edad            Int
+  etapaVida       String   @map("etapa_vida") // primera_infancia | infancia | adolescencia | juventud | adultez | vejez
+
+  // Condición de salud
+  patologia           Boolean @default(false)
+  patologiaDescripcion String? @map("patologia_descripcion")
+
+  // Foto del refugiado (base64 data URL) y token público de verificación QR
+  foto               String? @db.Text
+  verificacionToken  String? @unique @map("verificacion_token")
+
+  // Ubicación del siniestro
+  estado      String
+  municipio   String
+  parroquia   String
+  sector      String
+  direccion   String
+
+  // Condición de la vivienda
+  tipoVivienda     String @map("tipo_vivienda") // casa | apartamento | rancho | otros
+  estatusPropiedad String @map("estatus_propiedad") // propia | alquilada | prestada | otros
+  estatusActual    String @map("estatus_actual") // agrietada | alto_riesgo | riesgo_leve | sin_riesgo
+
+  // Auditoría de registro
+  registradoPorId String   @map("registrado_por")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  refugio        Refugio   @relation(fields: [refugioId], references: [id], onDelete: Restrict)
+  aula           Aula?     @relation(fields: [aulaId], references: [id], onDelete: SetNull)
+  jefeFamiliaRef Refugiado? @relation("JefeFamilia", fields: [jefeFamiliaId], references: [id], onDelete: SetNull)
+  familiares     Refugiado[] @relation("JefeFamilia")
+  registradoPor  Usuario   @relation("RefugiadoRegistradoPor", fields: [registradoPorId], references: [id])
+
+  @@index([refugioId])
+  @@index([jefeFamiliaId])
+  @@index([estado, municipio, parroquia])
+  @@index([registradoPorId])
+  @@map("refugiados")
+}
+
+// ─────────────────────────────────────────────
+// Auditoría
+// ─────────────────────────────────────────────
+
+model Auditoria {
+  id        String   @id @default(uuid())
+  usuarioId String   @map("usuario_id")
+  accion    String   // login | create | update | delete
+  entidad   String
+  entidadId String?  @map("entidad_id")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@index([createdAt])
+  @@map("auditoria")
+}

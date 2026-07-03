@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: #f4f6f8;
+  color: #1f2933;
+  font-family: "Georama", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+*:focus-visible {
+  outline: 3px solid #fcd116;
+  outline-offset: 2px;
+}
+
+.gov-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  background: #1e3a5f;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 2px solid #fcd116;
+}
+.gov-skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+.gov-nav-link:hover {
+  background: rgba(252, 209, 22, 0.18) !important;
+  color: #ffffff !important;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .no-print,
+  nav,
+  header[role="banner"] + div,
+  footer {
+    display: none !important;
+  }
+  .carnet-imprimible {
+    box-shadow: none !important;
+    border: 2px solid #1e3a5f !important;
+    page-break-inside: avoid;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+}
