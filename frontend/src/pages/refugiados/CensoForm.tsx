@@ -372,7 +372,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
               {form.rol === "jefe" ? "Datos del jefe de familia" : "Datos del afectado"}
             </Title>
             <PersonFields
-              form={form}
+              form={form as unknown as PersonFieldsData}
               onChange={(key, value) => update(key as keyof FormState, value as FormState[keyof FormState])}
               prefix="" />
 
@@ -392,7 +392,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                         data={PARENTESCO_OPTIONS} comboboxProps={{ withinPortal: true }} clearable={false} />
                     </Field>
                     <PersonFields
-                      form={f}
+                      form={f as unknown as PersonFieldsData}
                       onChange={(key, value) => updateFamiliar(i, key, value)}
                       prefix={`fam${i}`} />
                   </Paper>
