@@ -390,6 +390,8 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   data={refugios.map((r) => ({ value: r.id, label: r.nombre }))}
                   placeholder="Seleccione refugio"
                   comboboxProps={{ withinPortal: true }}
+                  allowDeselect={false}
+                  clearable={false}
                 />
               </Field>
               <Field label="Aula del refugio" htmlFor="aulaId">
@@ -401,6 +403,8 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   placeholder="Sin asignar"
                   disabled={aulas.length === 0}
                   comboboxProps={{ withinPortal: true }}
+                  allowDeselect={false}
+                  clearable={false}
                 />
               </Field>
             </SimpleGrid>
@@ -461,6 +465,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                       onChange={(v) => update("parentesco", v ?? "")}
                       data={PARENTESCO_OPTIONS}
                       comboboxProps={{ withinPortal: true }}
+                      clearable={false}
                     />
                   </Field>
                 )}
@@ -491,6 +496,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                     { value: "E", label: "E - Extranjero" },
                   ]}
                   comboboxProps={{ withinPortal: true }}
+                  clearable={false}
                 />
               </Field>
               <Box style={{ gridColumn: "span 2" }}>
@@ -532,6 +538,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                 onChange={(v) => update("etapaVida", v ?? "")}
                 data={ETAPA_VIDA_OPTIONS}
                 comboboxProps={{ withinPortal: true }}
+                clearable={false}
               />
             </Field>
           </Stack>
@@ -605,6 +612,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   onChange={(v) => update("estadoId", v ?? "")}
                   data={estados.map((e) => ({ value: e.id, label: e.nombre }))}
                   comboboxProps={{ withinPortal: true }}
+                  clearable={false}
                 />
               </Field>
               <Field label="Municipio" htmlFor="municipioId" required>
@@ -615,6 +623,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   data={municipios.map((m) => ({ value: m.id, label: m.nombre }))}
                   disabled={!form.estadoId}
                   comboboxProps={{ withinPortal: true }}
+                  clearable={false}
                 />
               </Field>
               <Field label="Parroquia" htmlFor="parroquiaId" required>
@@ -625,6 +634,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   data={parroquias.map((p) => ({ value: p.id, label: p.nombre }))}
                   disabled={!form.municipioId}
                   comboboxProps={{ withinPortal: true }}
+                  clearable={false}
                 />
               </Field>
             </SimpleGrid>
@@ -662,6 +672,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   onChange={(v) => update("tipoVivienda", v ?? "")}
                   data={TIPO_VIVIENDA_OPTIONS}
                   comboboxProps={{ withinPortal: true }}
+                  clearable={false}
                 />
               </Field>
               <Field label="Estatus de la propiedad" htmlFor="estatusPropiedad" required>
@@ -671,6 +682,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   onChange={(v) => update("estatusPropiedad", v ?? "")}
                   data={ESTATUS_PROPIEDAD_OPTIONS}
                   comboboxProps={{ withinPortal: true }}
+                  clearable={false}
                 />
               </Field>
               <Field label="Estatus actual" htmlFor="estatusActual" required>
@@ -680,6 +692,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                   onChange={(v) => update("estatusActual", v ?? "")}
                   data={ESTATUS_ACTUAL_OPTIONS}
                   comboboxProps={{ withinPortal: true }}
+                  clearable={false}
                 />
               </Field>
             </SimpleGrid>
