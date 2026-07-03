@@ -164,12 +164,12 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
     if (n === 1) {
       if (!form.refugioId) return "Seleccione un centro.";
       if (!form.origen.trim()) return "Indique el origen del afectado.";
+    }
+    if (n === 2) {
       if (!form.nombre.trim() || !form.apellido.trim()) return "Nombre y apellido son obligatorios.";
       const edad = Number(form.edad);
       if (!Number.isInteger(edad) || edad < 0 || edad > 150) return "Edad inválida.";
       if (!form.etapaVida) return "Seleccione la etapa de vida.";
-    }
-    if (n === 2) {
       if (form.patologia && !form.patologiaDescripcion.trim()) return "Describa la patología del jefe.";
     }
     if (n === 3) {
