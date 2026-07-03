@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   Group,
   NumberInput,
   Paper,
@@ -144,7 +145,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function updateFamiliar(i: number, key: keyof FamiliarForm, value: string | boolean | null) {
+  function updateFamiliar(i: number, key: string, value: string | boolean | null) {
     setForm((f) => ({
       ...f,
       familiares: f.familiares.map((x, idx) => (idx === i ? { ...x, [key]: value } : x)),
@@ -370,11 +371,14 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
             <Title order={4} c="govBlue.7" mb={0}>
               {form.rol === "jefe" ? "Datos del jefe de familia" : "Datos del afectado"}
             </Title>
-            <PersonFields form={form} onChange={update} prefix="" />
+            <PersonFields
+              form={form}
+              onChange={(key, value) => update(key as keyof FormState, value as FormState[keyof FormState])}
+              prefix="" />
 
             {form.rol === "jefe" && (
               <>
-                <Divider label="Familiares" labelPosition="center" />
+                <Divider label="Familiares" />
                 <Text size="sm" c="dimmed">Los familiares comparten la misma ubicación y vivienda.</Text>
                 {form.familiares.map((f, i) => (
                   <Paper key={f.uid} withBorder p="md" radius="md" bg="gray.0">
@@ -470,7 +474,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
             <Checkbox
               label="¿Tienen mascota?"
               checked={form.tieneMascota}
-              onChange={(e) => update("tieneMascota", e.currentTarget.checked)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => update("tieneMascota", e.currentTarget.checked)}
             />
             {form.tieneMascota && (
               <>
@@ -489,7 +493,7 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
                 <Checkbox
                   label="Tiene identificador"
                   checked={form.mascotaIdentificador}
-                  onChange={(e) => update("mascotaIdentificador", e.currentTarget.checked)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => update("mascotaIdentificador", e.currentTarget.checked)}
                 />
                 <Field label="Foto de la mascota" htmlFor="mascotaFoto">
                   <CamaraCaptura value={form.mascotaFoto} onChange={(v) => update("mascotaFoto", v)} />
@@ -517,44 +521,46 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
 }
 
 // ─── Subcomponente para campos de persona (jefe o familiar) ───
+interface PersonFieldsData {
+  nombre: string; apellido: string; nacionalidadCedula: string; cedula: string;
+  telefono: string; edad: string; etapaVida: string; numeroBrazalete: string;
+  tipoSangre: string; patologia: boolean; patologiaDescripcion: string; foto: string | null;
+  [key: string]: unknown;
+}
+
 function PersonFields({ form, onChange, prefix }: {
-  form: Record<string, unknown>;
+  form: PersonFieldsData;
   onChange: (key: string, value: string | boolean | null) => void;
   prefix: string;
 }) {
-  const f = form as {
-    nombre: string; apellido: string; nacionalidadCedula: string; cedula: string;
-    telefono: string; edad: string; etapaVida: string; numeroBrazalete: string;
-    tipoSangre: string; patologia: boolean; patologiaDescripcion: string; foto: string | null;
-  };
   return (
     <Stack gap="sm">
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
         <Field label="Nombre" htmlFor={`nombre_${prefix}`} required>
-          <TextInput id={`nombre_${prefix}`} value={f.nombre} onChange={(e) => onChange("nombre", e.currentTarget.value)} />
+          <TextInput id={`nombre_${prefix}`} value={form.nombre} onChange={(e) => onChange("nombre", e.currentTarget.value)} />
         </Field>
         <Field label="Apellido" htmlFor={`apellido_${prefix}`} required>
-          <TextInput id={`apellido_${prefix}`} value={f.apellido} onChange={(e) => onChange("apellido", e.currentTarget.value)} />
+          <TextInput id={`apellido_${prefix}`} value={form.apellido} onChange={(e) => onChange("apellido", e.currentTarget.value)} />
         </Field>
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
         <Field label="Nacionalidad" htmlFor={`nac_${prefix}`}>
-          <Select id={`nac_${prefix}`} value={f.nacionalidadCedula || null}
+          <Select id={`nac_${prefix}`} value={form.nacionalidadCedula || null}
             onChange={(v) => onChange("nacionalidadCedula", v ?? "")}
             data={[{ value: "V", label: "V - Venezolano" }, { value: "E", label: "E - Extranjero" }]}
             comboboxProps={{ withinPortal: true }} clearable={false} />
         </Field>
         <Field label="Cédula" htmlFor={`ced_${prefix}`} hint="Opcional si no posee.">
-          <TextInput id={`ced_${prefix}`} value={f.cedula} onChange={(e) => onChange("cedula", e.currentTarget.value)} />
+          <TextInput id={`ced_${prefix}`} value={form.cedula} onChange={(e) => onChange("cedula", e.currentTarget.value)} />
         </Field>
         <Field label="Teléfono" htmlFor={`tel_${prefix}`}>
-          <TextInput id={`tel_${prefix}`} value={f.telefono} onChange={(e) => onChange("telefono", e.currentTarget.value)} />
+          <TextInput id={`tel_${prefix}`} value={form.telefono} onChange={(e) => onChange("telefono", e.currentTarget.value)} />
         </Field>
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
         <Field label="Edad" htmlFor={`edad_${prefix}`} required>
           <NumberInput id={`edad_${prefix}`} min={0} max={150}
-            value={f.edad === "" ? "" : Number(f.edad)}
+            value={form.edad === "" ? "" : Number(form.edad)}
             onChange={(v) => {
               onChange("edad", String(v ?? ""));
               const n = Number(v);
@@ -562,42 +568,42 @@ function PersonFields({ form, onChange, prefix }: {
             }} hideControls />
         </Field>
         <Field label="Etapa de vida" htmlFor={`etapa_${prefix}`} required>
-          <Select id={`etapa_${prefix}`} value={f.etapaVida || null}
+          <Select id={`etapa_${prefix}`} value={form.etapaVida || null}
             onChange={(v) => onChange("etapaVida", v ?? "")} data={ETAPA_VIDA_OPTIONS}
             comboboxProps={{ withinPortal: true }} />
         </Field>
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
         <Field label="Brazalete" htmlFor={`braz_${prefix}`}>
-          <TextInput id={`braz_${prefix}`} value={f.numeroBrazalete}
+          <TextInput id={`braz_${prefix}`} value={form.numeroBrazalete}
             onChange={(e) => onChange("numeroBrazalete", e.currentTarget.value)}
             placeholder="Ej: CVM-001" />
         </Field>
         <Field label="Tipo de sangre" htmlFor={`ts_${prefix}`}>
-          <Select id={`ts_${prefix}`} value={f.tipoSangre || null}
+          <Select id={`ts_${prefix}`} value={form.tipoSangre || null}
             onChange={(v) => onChange("tipoSangre", v ?? "")} data={TIPO_SANGRE_OPTIONS}
             comboboxProps={{ withinPortal: true }} clearable={false} />
         </Field>
       </SimpleGrid>
       {/* Patología */}
       <Group align="flex-start" gap="sm" wrap="nowrap">
-        <input id={`pat_${prefix}`} type="checkbox" checked={f.patologia}
-          onChange={(e) => onChange("patologia", e.currentTarget.checked)}
+        <input id={`pat_${prefix}`} type="checkbox" checked={form.patologia}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange("patologia", e.currentTarget.checked)}
           style={{ width: 18, height: 18, marginTop: 4, cursor: "pointer" }} />
         <label htmlFor={`pat_${prefix}`} style={{ cursor: "pointer", flex: 1 }}>
           <Text fw={600} size="sm">¿Posee alguna patología?</Text>
           <Text size="xs" c="dimmed">Especifique si presenta una condición de salud relevante.</Text>
         </label>
       </Group>
-      {f.patologia && (
+      {form.patologia && (
         <Field label="Especifique la patología" htmlFor={`patdesc_${prefix}`} required>
-          <Textarea id={`patdesc_${prefix}`} value={f.patologiaDescripcion}
+          <Textarea id={`patdesc_${prefix}`} value={form.patologiaDescripcion}
             onChange={(e) => onChange("patologiaDescripcion", e.currentTarget.value)}
             autosize minRows={2} placeholder="Ej: hipertensión, diabetes, asma…" />
         </Field>
       )}
       <Field label="Foto" htmlFor={`foto_${prefix}`}>
-        <CamaraCaptura value={f.foto} onChange={(v) => onChange("foto", v)} />
+        <CamaraCaptura value={form.foto} onChange={(v) => onChange("foto", v)} />
       </Field>
     </Stack>
   );
