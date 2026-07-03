@@ -5,6 +5,12 @@
  *   pm2 start ecosystem.config.cjs
  *   pm2 save
  *   pm2 startup   # seguir el comando sudo que imprime
+ *
+ * Nota: usamos `tsx` para arrancar el TS directamente. Esto evita tener
+ * que compilar `shared/` a JS aparte (el backend importa tipos y valores
+ * runtime de `shared`, y `tsx` resuelve los `.ts` sin necesidad de un
+ * paso de build adicional para el shared). PM2 carga `tsx` desde
+ * node_modules/.
  */
 
 module.exports = {
@@ -12,7 +18,8 @@ module.exports = {
     {
       name: "censo-backend",
       cwd: __dirname,
-      script: "dist/index.js",
+      script: "src/index.ts",
+      interpreter: "node_modules/.bin/tsx",
       instances: 1,
       exec_mode: "fork",
       env: {
@@ -27,3 +34,4 @@ module.exports = {
     },
   ],
 };
+

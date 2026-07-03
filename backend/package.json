@@ -6,8 +6,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc -p tsconfig.json",
-    "start": "node dist/index.js",
+    "build": "prisma generate",
+    "start": "tsx src/index.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "rate-limiter-flexible": "^5.0.0",
+    "tsx": "^4.19.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -43,7 +44,6 @@
     "eslint": "^9.14.0",
     "globals": "^15.15.0",
     "prisma": "^5.22.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.62.1",
     "vitest": "^4.1.9"
