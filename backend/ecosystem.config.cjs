@@ -1,15 +1,17 @@
 /**
- * Configuración de PM2 para el backend del Censo de Refugios.
+ * Configuración de PM2 para el stack completo del Censo de Refugios.
+ *
+ * Levanta DOS procesos:
+ *   1. censo-backend    → API Express en puerto 3016
+ *   2. censo-frontend   → Servidor estático del frontend (Vite build) en 3017
+ *
+ * Para HTTPS, caché y compresión, usar Nginx como reverse proxy delante
+ * de estos procesos (ver docs/DEPLOY.md).
  *
  * Uso:
  *   pm2 start ecosystem.config.cjs
  *   pm2 save
- *   pm2 startup   # seguir el comando sudo que imprime
- *
- * El backend se ejecuta con `tsx` (cargador de TypeScript para Node) en
- * lugar de `node dist/index.js`. Buscamos el binario cli.mjs de tsx en
- * backend/node_modules y, si no está (monorepo con hoisting), subimos
- * un nivel al node_modules raíz del workspace.
+ *   pm2 startup
  */
 
 const path = require("path");
@@ -23,9 +25,7 @@ function findTsxCli() {
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
   }
-  throw new Error(
-    "No se encontró tsx. Ejecuta `npm install` en la raíz del monorepo.",
-  );
+  throw new Error("No se encontró tsx. Ejecuta `npm install` en la raíz del monorepo.");
 }
 
 module.exports = {
@@ -47,6 +47,20 @@ module.exports = {
       time: true,
       autorestart: true,
     },
+    {
+      name: "censo-frontend",
+      cwd: path.resolve(__dirname, "../frontend"),
+      script: path.resolve(__dirname, "../frontend/serve.mjs"),
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        PORT_FRONTEND: 3017,
+      },
+      max_memory_restart: "200M",
+      error_file: "/var/log/censo-refugios/frontend-error.log",
+      out_file: "/var/log/censo-refugios/frontend-out.log",
+      time: true,
+      autorestart: true,
+    },
   ],
 };
-
