@@ -7,6 +7,7 @@ CREATE TABLE "usuarios" (
     "password_hash" TEXT NOT NULL,
     "rol" TEXT NOT NULL DEFAULT 'funcionario',
     "activo" BOOLEAN NOT NULL DEFAULT true,
+    "token_version" INTEGER NOT NULL DEFAULT 0,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
