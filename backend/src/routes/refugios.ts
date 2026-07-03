@@ -47,7 +47,14 @@ refugiosRouter.get("/", async (req: Request, res: Response, next: NextFunction) 
       },
     });
     res.json(
-      refugios.map((r) => ({
+      refugios.map((r: {
+        id: string;
+        nombre: string;
+        capacidadEstimada: number;
+        ubicacion: string;
+        _count: { refugiados: number };
+        aulas: { id: string; nombre: string; capacidad: number | null }[];
+      }) => ({
         id: r.id,
         nombre: r.nombre,
         capacidadEstimada: r.capacidadEstimada,

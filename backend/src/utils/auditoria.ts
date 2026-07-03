@@ -1,4 +1,5 @@
-import { prisma, type Prisma } from "../services/prisma.js";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../services/prisma.js";
 
 export async function logAuditoria(
   usuarioId: string,

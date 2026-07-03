@@ -196,7 +196,12 @@ usuariosRouter.patch("/:id", async (req: Request, res: Response, next: NextFunct
 
     // Validar refugios nuevos si se proveen
     if (refugioIds !== undefined && rol !== RolUsuario.ADMINISTRADOR) {
-      const ids = refugioIds.length > 0 ? refugioIds : (await prisma.usuarioRefugio.findMany({ where: { usuarioId: id }, select: { refugioId: true } })).map((r) => r.refugioId);
+      const ids = refugioIds.length > 0
+        ? refugioIds
+        : (await prisma.usuarioRefugio.findMany({
+            where: { usuarioId: id },
+            select: { refugioId: true },
+          })).map((r: { refugioId: string }) => r.refugioId);
       if (ids.length > 0) {
         const count = await prisma.refugio.count({ where: { id: { in: ids } } });
         if (count !== ids.length) {

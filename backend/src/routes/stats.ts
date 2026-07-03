@@ -25,8 +25,14 @@ statsRouter.get("/", async (req: Request, res: Response, next: NextFunction) => 
       },
     });
 
-    const totalRefugiados = refugios.reduce((s, r) => s + r._count.refugiados, 0);
-    const capacidadTotal = refugios.reduce((s, r) => s + r.capacidadEstimada, 0);
+    const totalRefugiados = refugios.reduce(
+      (s: number, r: { _count: { refugiados: number } }) => s + r._count.refugiados,
+      0,
+    );
+    const capacidadTotal = refugios.reduce(
+      (s: number, r: { capacidadEstimada: number }) => s + r.capacidadEstimada,
+      0,
+    );
 
     res.json({
       totalRefugios: refugios.length,
@@ -158,15 +164,24 @@ statsRouter.get("/:refugioId", async (req: Request, res: Response, next: NextFun
         porcentajeOcupacion:
           refugio.capacidadEstimada > 0 ? Math.round((total / refugio.capacidadEstimada) * 100) : 0,
       },
-      porEtapaVida: porEtapa.map((e) => ({ etapa: e.etapaVida, cantidad: e._count._all })),
-      porParentesco: porParentesco.map((p) => ({ parentesco: p.parentesco, cantidad: p._count._all })),
-      porEstatusVivienda: porEstatusVivienda.map((e) => ({
+      porEtapaVida: porEtapa.map((e: { etapaVida: string; _count: { _all: number } }) => ({
+        etapa: e.etapaVida,
+        cantidad: e._count._all,
+      })),
+      porParentesco: porParentesco.map((p: { parentesco: string | null; _count: { _all: number } }) => ({
+        parentesco: p.parentesco,
+        cantidad: p._count._all,
+      })),
+      porEstatusVivienda: porEstatusVivienda.map((e: { estatusActual: string; _count: { _all: number } }) => ({
         estatus: e.estatusActual,
         cantidad: e._count._all,
       })),
       patologiasTop,
-      sectoresMasAfectados: sectores.map((s) => ({ sector: s.sector, cantidad: s._count._all })),
-      estadosMasAfectados: estadosAfectados.map((e) => ({
+      sectoresMasAfectados: sectores.map((s: { sector: string; _count: { _all: number } }) => ({
+        sector: s.sector,
+        cantidad: s._count._all,
+      })),
+      estadosMasAfectados: estadosAfectados.map((e: { estado: string; _count: { _all: number } }) => ({
         estado: e.estado,
         cantidad: e._count._all,
       })),
