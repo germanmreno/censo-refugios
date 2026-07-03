@@ -6,6 +6,12 @@ export interface Aula {
   capacidad: number | null;
 }
 
+export interface Modulo {
+  id: string;
+  nombre: string;
+  aulas: Aula[];
+}
+
 export interface Refugio {
   id: string;
   nombre: string;
@@ -13,6 +19,7 @@ export interface Refugio {
   ubicacion: string;
   ocupacionActual: number;
   aulas: Aula[];
+  modulos: Modulo[];
 }
 
 export interface RefugioDetalle extends Refugio {
@@ -57,7 +64,7 @@ export interface CrearRefugioPayload {
   nombre: string;
   capacidadEstimada: number;
   ubicacion: string;
-  aulas?: { nombre: string; capacidad?: number }[];
+  modulos?: { nombre: string; aulas?: { nombre: string; capacidad?: number }[] }[];
 }
 
 export async function crearRefugio(payload: CrearRefugioPayload) {

@@ -15,6 +15,8 @@ export interface RefugiadoLista {
   telefono: string | null;
   edad: number;
   etapaVida: string;
+  numeroBrazalete?: string | null;
+  tipoSangre?: string | null;
   patologia: boolean;
   patologiaDescripcion: string | null;
   estado: string;
@@ -26,6 +28,7 @@ export interface RefugiadoLista {
   estatusPropiedad: string;
   estatusActual: string;
   verificacionToken?: string | null;
+  foto?: string | null;
   refugio?: { id: string; nombre: string };
   aula?: { id: string; nombre: string } | null;
   jefeFamiliaRef?: { id: string; nombre: string; apellido: string; cedula: string | null } | null;
@@ -36,7 +39,36 @@ export interface RefugiadoLista {
     cedula: string | null;
     parentesco: string | null;
     edad: number;
+    tipoSangre?: string | null;
+    numeroBrazalete?: string | null;
+    foto?: string | null;
+    patologia?: boolean;
+    patologiaDescripcion?: string | null;
   }[];
+}
+
+export interface FamiliarCarnet {
+  id: string;
+  nombre: string;
+  apellido: string;
+  nacionalidadCedula: string | null;
+  cedula: string | null;
+  edad: number;
+  etapaVida: string;
+  parentesco: string | null;
+  tipoSangre: string | null;
+  numeroBrazalete: string | null;
+  foto: string | null;
+  patologia: boolean;
+  patologiaDescripcion: string | null;
+}
+
+export interface MascotaCarnet {
+  id: string;
+  tipo: string;
+  color: string | null;
+  tieneIdentificador: boolean;
+  foto: string | null;
 }
 
 export interface ListaResponse {
@@ -70,6 +102,8 @@ export interface CrearRefugiadoPayload {
   telefono?: string | null;
   edad: number;
   etapaVida: string;
+  numeroBrazalete?: string | null;
+  tipoSangre?: string | null;
   patologia: boolean;
   patologiaDescripcion?: string | null;
   foto?: string | null;
@@ -83,9 +117,66 @@ export interface CrearRefugiadoPayload {
   estatusActual: string;
 }
 
+export interface CrearAfectadoBatchPayload {
+  refugioId: string;
+  aulaId?: string | null;
+  origen: string;
+  estado: string;
+  municipio: string;
+  parroquia: string;
+  sector: string;
+  direccion: string;
+  tipoVivienda: string;
+  estatusPropiedad: string;
+  estatusActual: string;
+  jefe: {
+    numeroBrazalete?: string | null;
+    nombre: string;
+    apellido: string;
+    nacionalidadCedula?: string | null;
+    cedula?: string | null;
+    telefono?: string | null;
+    edad: number;
+    etapaVida: string;
+    tipoSangre?: string | null;
+    patologia: boolean;
+    patologiaDescripcion?: string | null;
+    foto?: string | null;
+  };
+  familiares?: {
+    parentesco: string;
+    numeroBrazalete?: string | null;
+    nombre: string;
+    apellido: string;
+    nacionalidadCedula?: string | null;
+    cedula?: string | null;
+    edad: number;
+    etapaVida: string;
+    tipoSangre?: string | null;
+    patologia: boolean;
+    patologiaDescripcion?: string | null;
+    foto?: string | null;
+  }[];
+  mascota?: {
+    tipo: string;
+    color?: string | null;
+    tieneIdentificador: boolean;
+    foto?: string | null;
+  } | null;
+}
+
+export interface BatchResult {
+  jefe: RefugiadoCreado;
+  familiares: { id: string; nombre: string; apellido: string; parentesco: string | null }[];
+}
+
 export interface RefugiadoCreado extends RefugiadoLista {
   foto: string | null;
   verificacionToken: string | null;
+  tipoSangre?: string | null;
+  numeroBrazalete?: string | null;
+  familiares?: FamiliarCarnet[];
+  mascota?: MascotaCarnet | null;
 }
 
 export async function fetchRefugiados(params: {
@@ -116,6 +207,11 @@ export async function buscarJefes(q: string, refugioId: string) {
 
 export async function crearRefugiado(payload: CrearRefugiadoPayload) {
   const { data } = await api.post<RefugiadoCreado>("/refugiados", payload);
+  return data;
+}
+
+export async function crearAfectadoBatch(payload: CrearAfectadoBatchPayload) {
+  const { data } = await api.post<BatchResult>("/refugiados/batch", payload);
   return data;
 }
 

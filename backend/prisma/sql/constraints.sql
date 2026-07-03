@@ -1,4 +1,4 @@
--- Constraints adicionales sobre refugiados
+-- Constraints adicionales sobre refugiados (Afectados)
 -- Refuerzan la lógica de jefe de familia (incluye "independiente") y de patología
 
 ALTER TABLE refugiados

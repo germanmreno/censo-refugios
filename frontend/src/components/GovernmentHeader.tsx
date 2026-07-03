@@ -28,7 +28,7 @@ export function GovernmentHeader() {
           <Group align="center" gap="sm" wrap="nowrap">
             <Stack gap={0} visibleFrom="sm" align="flex-end">
               <Text size="xs" c="govBlue.7" fw={700} tt="uppercase" lts={0.5}>
-                Censo de Refugios
+                Censo de Centros
               </Text>
               <Text size="xs" c="gray.6" lts={0.3}>
                 Venezuela 2026

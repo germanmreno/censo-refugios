@@ -16,8 +16,8 @@ import { GovernmentHeader } from "./GovernmentHeader";
 
 const navItems = [
   { to: "/", label: "Inicio", end: true, adminOnly: false },
-  { to: "/refugios", label: "Refugios", adminOnly: false },
-  { to: "/refugiados", label: "Refugiados", adminOnly: false },
+  { to: "/refugios", label: "Centros", adminOnly: false },
+  { to: "/refugiados", label: "Afectados", adminOnly: false },
   { to: "/estadisticas", label: "Estadísticas", adminOnly: false },
   { to: "/usuarios", label: "Usuarios", adminOnly: true },
 ];
@@ -205,7 +205,7 @@ function AppShellFooter() {
     >
       <Text size="xs" style={{ color: "#fff" }}>
         Sistema de censo gubernamental · Ministerio del Poder Popular de Desarrollo Minero
-        Ecológico e Industrias Básicas · Uso oficial restringido
+        Ecológico e Industrias Básicas · Sistema de Censo de Centros · Uso oficial restringido
       </Text>
     </footer>
   );

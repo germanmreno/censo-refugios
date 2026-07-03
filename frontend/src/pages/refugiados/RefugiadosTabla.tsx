@@ -137,13 +137,32 @@ export function RefugiadosTabla() {
           cedula: data.cedula,
           edad: data.edad,
           etapaVida: data.etapaVida,
+          tipoSangre: data.tipoSangre ?? null,
+          numeroBrazalete: data.numeroBrazalete ?? null,
           telefono: data.telefono,
           foto: data.foto,
           refugio: data.refugio
             ? { id: data.refugio.id, nombre: data.refugio.nombre }
-            : { id: "", nombre: "Refugio" },
+            : { id: "", nombre: "Centro" },
           aula: data.aula ?? null,
           createdAt: new Date().toISOString(),
+          familiares: data.familiares?.map((f) => ({
+            id: f.id,
+            nombre: f.nombre,
+            apellido: f.apellido,
+            parentesco: f.parentesco ?? null,
+            edad: f.edad,
+            tipoSangre: f.tipoSangre ?? null,
+            numeroBrazalete: f.numeroBrazalete ?? null,
+          })) ?? [],
+          mascota: data.mascota
+            ? {
+                tipo: data.mascota.tipo,
+                color: data.mascota.color ?? null,
+                tieneIdentificador: data.mascota.tieneIdentificador,
+                foto: data.mascota.foto ?? null,
+              }
+            : null,
         };
         setCarnet(c);
       })

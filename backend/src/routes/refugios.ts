@@ -16,11 +16,16 @@ const aulaSchema = z.object({
   capacidad: z.number().int().positive().optional(),
 });
 
+const moduloSchema = z.object({
+  nombre: z.string().min(1).max(100),
+  aulas: z.array(aulaSchema).max(100).default([]),
+});
+
 const crearRefugioSchema = z.object({
   nombre: z.string().min(1).max(200),
   capacidadEstimada: z.number().int().positive(),
   ubicacion: z.string().min(1).max(500),
-  aulas: z.array(aulaSchema).max(100).default([]),
+  modulos: z.array(moduloSchema).max(100).default([]),
 });
 
 const actualizarRefugioSchema = z.object({
@@ -32,6 +37,7 @@ const actualizarRefugioSchema = z.object({
 const aulaCrearSchema = z.object({
   nombre: z.string().min(1).max(100),
   capacidad: z.number().int().positive().optional(),
+  moduloId: z.string().uuid(),
 });
 
 // GET /api/refugios  (admin: todos; funcionario: solo sus refugios)
@@ -43,7 +49,10 @@ refugiosRouter.get("/", async (req: Request, res: Response, next: NextFunction) 
       orderBy: { nombre: "asc" },
       include: {
         _count: { select: { refugiados: { where: { deletedAt: null } } } },
-        aulas: { orderBy: { nombre: "asc" } },
+        modulos: {
+          orderBy: { nombre: "asc" },
+          include: { aulas: { orderBy: { nombre: "asc" } } },
+        },
       },
     });
     res.json(
@@ -53,14 +62,14 @@ refugiosRouter.get("/", async (req: Request, res: Response, next: NextFunction) 
         capacidadEstimada: number;
         ubicacion: string;
         _count: { refugiados: number };
-        aulas: { id: string; nombre: string; capacidad: number | null }[];
+        modulos: { id: string; nombre: string; aulas: { id: string; nombre: string; capacidad: number | null }[] }[];
       }) => ({
         id: r.id,
         nombre: r.nombre,
         capacidadEstimada: r.capacidadEstimada,
         ubicacion: r.ubicacion,
         ocupacionActual: r._count.refugiados,
-        aulas: r.aulas,
+        aulas: r.modulos.flatMap((m) => m.aulas),
       })),
     );
   } catch (err) {
@@ -76,9 +85,14 @@ refugiosRouter.get("/:id", async (req: Request, res: Response, next: NextFunctio
     const refugio = await prisma.refugio.findUnique({
       where: { id: acceso.refugioId },
       include: {
-        aulas: {
+        modulos: {
           orderBy: { nombre: "asc" },
-          include: { _count: { select: { refugiados: { where: { deletedAt: null } } } } },
+          include: {
+            aulas: {
+              orderBy: { nombre: "asc" },
+              include: { _count: { select: { refugiados: { where: { deletedAt: null } } } } },
+            },
+          },
         },
         _count: { select: { refugiados: { where: { deletedAt: null } } } },
       },
@@ -106,7 +120,7 @@ refugiosRouter.get("/:id/ocupacion", async (req: Request, res: Response, next: N
     ]);
 
     const aulas = await prisma.aula.findMany({
-      where: { refugioId: id },
+      where: { modulo: { refugioId: id } },
       select: {
         id: true,
         nombre: true,
@@ -161,19 +175,52 @@ refugiosRouter.post(
         res.status(400).json({ error: "Datos inválidos.", detalles: parsed.error.flatten() });
         return;
       }
-      const { nombre, capacidadEstimada, ubicacion, aulas } = parsed.data;
+      const { nombre, capacidadEstimada, ubicacion, modulos } = parsed.data;
 
       const refugio = await prisma.refugio.create({
         data: {
           nombre,
           capacidadEstimada,
           ubicacion,
-          aulas:
-            aulas.length > 0
-              ? { createMany: { data: aulas.map((a) => ({ nombre: a.nombre, capacidad: a.capacidad ?? null })) } }
+          modulos:
+            modulos.length > 0
+              ? {
+                  createMany: {
+                    data: modulos.map((m) => ({ nombre: m.nombre })),
+                  },
+                }
               : undefined,
         },
-        include: { aulas: true },
+      });
+
+      // Insertar aulas en cada módulo creado
+      const modulosCreados = await prisma.modulo.findMany({
+        where: { refugioId: refugio.id },
+        orderBy: { nombre: "asc" },
+      });
+
+      for (let i = 0; i < modulos.length; i++) {
+        const m = modulos[i];
+        const mo = modulosCreados[i];
+        if (mo && m.aulas.length > 0) {
+          await prisma.aula.createMany({
+            data: m.aulas.map((a) => ({
+              moduloId: mo.id,
+              nombre: a.nombre,
+              capacidad: a.capacidad ?? null,
+            })),
+          });
+        }
+      }
+
+      const result = await prisma.refugio.findUnique({
+        where: { id: refugio.id },
+        include: {
+          modulos: {
+            include: { aulas: true },
+            orderBy: { nombre: "asc" },
+          },
+        },
       });
 
       await logAuditoria(req.user!.sub, "create", "refugio", refugio.id, { nombre });
@@ -201,7 +248,9 @@ refugiosRouter.patch(
       const refugio = await prisma.refugio.update({
         where: { id: acceso.refugioId },
         data: parsed.data,
-        include: { aulas: true },
+        include: {
+          modulos: { include: { aulas: true } },
+        },
       });
       await logAuditoria(req.user!.sub, "update", "refugio", refugio.id, parsed.data);
       res.json(refugio);
@@ -224,7 +273,7 @@ refugiosRouter.delete(
       const activos = await prisma.refugiado.count({ where: { refugioId: id, deletedAt: null } });
       if (activos > 0) {
         res.status(409).json({
-          error: `No se puede eliminar: el refugio tiene ${activos} refugiado(s) activo(s). Reasigne o elimine primero los registros.`,
+          error: `No se puede eliminar: el centro tiene ${activos} afectado(s) activo(s). Reasigne o elimine primero los registros.`,
         });
         return;
       }
@@ -254,9 +303,9 @@ refugiosRouter.post(
         return;
       }
       const aula = await prisma.aula.create({
-        data: { refugioId: acceso.refugioId, nombre: parsed.data.nombre, capacidad: parsed.data.capacidad ?? null },
+        data: { moduloId: parsed.data.moduloId, nombre: parsed.data.nombre, capacidad: parsed.data.capacidad ?? null },
       });
-      await logAuditoria(req.user!.sub, "create", "aula", aula.id, { refugioId: acceso.refugioId });
+      await logAuditoria(req.user!.sub, "create", "aula", aula.id, { moduloId: parsed.data.moduloId });
       res.status(201).json(aula);
     } catch (err) {
       next(err);

@@ -57,9 +57,9 @@ export function Login() {
         >
           <Stack gap="md">
             <Stack gap={4}>
-              <Title order={2} c="govBlue.7" mb={0}>
-                Censo de Refugios
-              </Title>
+          <Title order={2} c="govBlue.7" mb={0}>
+            Censo de Centros
+          </Title>
               <Text size="sm" c="dimmed">
                 Venezuela 2026 · Acceso restringido a funcionarios autorizados
               </Text>

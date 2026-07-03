@@ -3,6 +3,32 @@ import { QRCodeSVG } from "qrcode.react";
 import bicentenario from "../assets/bicentenario.png";
 import ministerio from "../assets/ministerio-texto.png";
 
+const ETAPA_LABEL: Record<string, string> = {
+  primera_infancia: "Prim. infancia",
+  infancia: "Infancia",
+  adolescencia: "Adolescencia",
+  juventud: "Juventud",
+  adultez: "Adultez",
+  vejez: "Vejez",
+};
+
+export interface FamiliarCarnetItem {
+  id: string;
+  nombre: string;
+  apellido: string;
+  parentesco: string | null;
+  edad: number;
+  tipoSangre: string | null;
+  numeroBrazalete: string | null;
+}
+
+export interface MascotaCarnetItem {
+  tipo: string;
+  color: string | null;
+  tieneIdentificador: boolean;
+  foto: string | null;
+}
+
 export interface CarnetData {
   id: string;
   verificacionToken: string | null;
@@ -12,26 +38,21 @@ export interface CarnetData {
   cedula: string | null;
   edad: number;
   etapaVida: string;
+  tipoSangre: string | null;
+  numeroBrazalete: string | null;
   telefono: string | null;
   foto: string | null;
   refugio: { id: string; nombre: string; ubicacion?: string };
   aula?: { id: string; nombre: string } | null;
   createdAt: string;
+  familiares?: FamiliarCarnetItem[];
+  mascota?: MascotaCarnetItem | null;
 }
 
 interface Props {
   data: CarnetData;
   urlVerificacion: string;
 }
-
-const ETAPA_LABEL: Record<string, string> = {
-  primera_infancia: "Primera infancia",
-  infancia: "Infancia",
-  adolescencia: "Adolescencia",
-  juventud: "Juventud",
-  adultez: "Adultez",
-  vejez: "Vejez",
-};
 
 export function CarnetRefugiado({ data, urlVerificacion }: Props) {
   const cedulaCompleta = data.cedula
@@ -131,41 +152,57 @@ export function CarnetRefugiado({ data, urlVerificacion }: Props) {
           )}
         </Box>
 
-        <Stack gap={6}>
-          <Stack gap={2}>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
-              Nombre y apellido
-            </Text>
-            <Text fw={800} size="lg" c="govBlue.7">
-              {data.nombre} {data.apellido}
-            </Text>
-          </Stack>
-          <Stack gap={2}>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
-              Cédula
-            </Text>
-            <Text fw={600}>{cedulaCompleta}</Text>
-          </Stack>
-          <Stack gap={2}>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
-              Edad
-            </Text>
-            <Text fw={600}>
-              {data.edad} años · {ETAPA_LABEL[data.etapaVida] ?? data.etapaVida}
-            </Text>
-          </Stack>
-          <Stack gap={2}>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
-              Refugio
-            </Text>
-            <Text fw={600}>{data.refugio.nombre}</Text>
-            {data.aula && (
-              <Text size="xs" c="dimmed">
-                Aula: {data.aula.nombre}
+          <Stack gap={6}>
+            <Stack gap={2}>
+              <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                Nombre y apellido
               </Text>
+              <Text fw={800} size="lg" c="govBlue.7">
+                {data.nombre} {data.apellido}
+              </Text>
+            </Stack>
+            <Stack gap={2}>
+              <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                Cédula
+              </Text>
+              <Text fw={600}>{cedulaCompleta}</Text>
+            </Stack>
+            <Stack gap={2}>
+              <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                Edad
+              </Text>
+              <Text fw={600}>
+                {data.edad} años · {ETAPA_LABEL[data.etapaVida] ?? data.etapaVida}
+              </Text>
+            </Stack>
+            {data.tipoSangre && data.tipoSangre !== "no_sabe" && (
+              <Stack gap={2}>
+                <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                  Tipo de sangre
+                </Text>
+                <Text fw={600}>{data.tipoSangre}</Text>
+              </Stack>
             )}
+            {data.numeroBrazalete && (
+              <Stack gap={2}>
+                <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                  Brazalete
+                </Text>
+                <Text fw={600}>{data.numeroBrazalete}</Text>
+              </Stack>
+            )}
+            <Stack gap={2}>
+              <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                Centro
+              </Text>
+              <Text fw={600}>{data.refugio.nombre}</Text>
+              {data.aula && (
+                <Text size="xs" c="dimmed">
+                  Aula: {data.aula.nombre}
+                </Text>
+              )}
+            </Stack>
           </Stack>
-        </Stack>
 
         <Stack gap={4} align="center" justify="center">
           <Box style={{ background: "#fff", padding: 4, borderRadius: 4 }}>
@@ -187,6 +224,58 @@ export function CarnetRefugiado({ data, urlVerificacion }: Props) {
           </Text>
         </Stack>
       </Box>
+
+      {data.familiares && data.familiares.length > 0 && (
+        <Box
+          style={{
+            padding: "0.5rem 1rem",
+            background: "#f4f6f8",
+            borderTop: "1px solid #d6dbe1",
+          }}
+        >
+          <Text fw={700} size="sm" c="govBlue.7" mb={4}>
+            Familiares ({data.familiares.length})
+          </Text>
+          <Stack gap={2}>
+            {data.familiares.map((f) => (
+              <Text key={f.id} size="xs" fw={500}>
+                {f.nombre} {f.apellido} · {f.parentesco} · {f.edad} años
+                {f.numeroBrazalete && ` · Brazalete ${f.numeroBrazalete}`}
+              </Text>
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {data.mascota && (
+        <Box
+          style={{
+            padding: "0.5rem 1rem",
+            background: "#fff8e1",
+            borderTop: "1px solid #d6dbe1",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
+          {data.mascota.foto && (
+            <img
+              src={data.mascota.foto}
+              alt="Mascota"
+              style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, border: "1px solid #1e3a5f" }}
+            />
+          )}
+          <Box>
+            <Text size="xs" fw={700} c="govBlue.7">
+              Mascota: {data.mascota.tipo}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {data.mascota.color ? `Color: ${data.mascota.color}` : ""}
+              {data.mascota.tieneIdentificador ? " · Con identificador" : ""}
+            </Text>
+          </Box>
+        </Box>
+      )}
 
       <Box
         style={{

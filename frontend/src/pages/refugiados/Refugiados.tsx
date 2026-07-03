@@ -32,7 +32,7 @@ export function Refugiados() {
     <Stack gap="md">
       <Group justify="space-between" align="center" wrap="wrap">
         <Title order={1} c="govBlue.7" mb={0}>
-          Refugiados
+          Afectados
         </Title>
         <Button onClick={() => setMostrarForm(true)} color="govBlue">
           + Nuevo registro

@@ -1,8 +1,28 @@
-import axios from "axios";
+import { api } from "./client";
 
-const api = axios.create({
-  baseURL: "/api",
-});
+export interface FamiliarPublico {
+  id: string;
+  nombre: string;
+  apellido: string;
+  nacionalidadCedula: string | null;
+  cedula: string | null;
+  edad: number;
+  etapaVida: string;
+  parentesco: string | null;
+  tipoSangre: string | null;
+  numeroBrazalete: string | null;
+  foto: string | null;
+  patologia: boolean;
+  patologiaDescripcion: string | null;
+}
+
+export interface MascotaPublica {
+  id: string;
+  tipo: string;
+  color: string | null;
+  tieneIdentificador: boolean;
+  foto: string | null;
+}
 
 export interface RefugiadoVerificacion {
   id: string;
@@ -12,6 +32,8 @@ export interface RefugiadoVerificacion {
   cedula: string | null;
   edad: number;
   etapaVida: string;
+  tipoSangre: string | null;
+  numeroBrazalete: string | null;
   telefono: string | null;
   foto: string | null;
   origen: string;
@@ -30,6 +52,8 @@ export interface RefugiadoVerificacion {
   refugio: { id: string; nombre: string; ubicacion: string };
   aula: { id: string; nombre: string } | null;
   jefeFamiliaRef: { id: string; nombre: string; apellido: string; cedula: string | null } | null;
+  familiares: FamiliarPublico[];
+  mascota: MascotaPublica | null;
 }
 
 export interface VerificacionResponse {

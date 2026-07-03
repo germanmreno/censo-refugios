@@ -19,19 +19,21 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  buscarJefes,
   crearRefugiado,
+  crearAfectadoBatch,
   type CrearRefugiadoPayload,
-  type JefeOption,
+  type CrearAfectadoBatchPayload,
   type RefugiadoCreado,
 } from "../../api/refugiados";
 import { fetchEstados, fetchMunicipios, fetchParroquias, type GeoItem } from "../../api/geo";
-import { fetchRefugios, type Refugio } from "../../api/refugios";
+import { fetchRefugios } from "../../api/refugios";
 import {
   ETAPA_VIDA_OPTIONS,
   ESTATUS_ACTUAL_OPTIONS,
   ESTATUS_PROPIEDAD_OPTIONS,
   PARENTESCO_OPTIONS,
+  TIPO_SANGRE_OPTIONS,
+  TIPO_MASCOTA_OPTIONS,
   TIPO_VIVIENDA_OPTIONS,
   etapaVidaPorEdad,
 } from "../../utils/opciones";
@@ -39,124 +41,79 @@ import { Field } from "../../components/FormFields";
 import { CamaraCaptura } from "../../components/CamaraCaptura";
 import { CarnetRefugiado, type CarnetData } from "../../components/CarnetRefugiado";
 
-const DRAFT_KEY = "censo-refugios:draft";
+const DRAFT_KEY = "censo-afectados:draft";
+type RolAfectado = "jefe" | "independiente";
 
-type RolRefugiado = "jefe" | "familiar" | "independiente";
-
-interface FormState {
-  rol: RolRefugiado;
-  refugioId: string;
-  aulaId: string;
-  origen: string;
-  jefeFamiliaId: string;
+interface FamiliarForm {
+  uid: string;
   parentesco: string;
+  numeroBrazalete: string;
   nombre: string;
   apellido: string;
   nacionalidadCedula: string;
   cedula: string;
-  telefono: string;
   edad: string;
   etapaVida: string;
+  tipoSangre: string;
+  telefono: string;
   patologia: boolean;
   patologiaDescripcion: string;
   foto: string | null;
-  estadoId: string;
-  municipioId: string;
-  parroquiaId: string;
-  sector: string;
-  direccion: string;
-  tipoVivienda: string;
-  estatusPropiedad: string;
-  estatusActual: string;
+}
+
+function genId() { return Math.random().toString(36).slice(2, 10); }
+
+const emptyFamiliar = (): FamiliarForm => ({
+  uid: genId(), parentesco: "", numeroBrazalete: "", nombre: "", apellido: "",
+  nacionalidadCedula: "V", cedula: "", edad: "", etapaVida: "", tipoSangre: "",
+  telefono: "", patologia: false, patologiaDescripcion: "", foto: null,
+});
+
+interface FormState {
+  rol: RolAfectado;
+  refugioId: string; moduloId: string; aulaId: string; origen: string;
+  nombre: string; apellido: string; nacionalidadCedula: string; cedula: string;
+  telefono: string; edad: string; etapaVida: string; numeroBrazalete: string;
+  tipoSangre: string; patologia: boolean; patologiaDescripcion: string; foto: string | null;
+  familiares: FamiliarForm[];
+  estadoId: string; municipioId: string; parroquiaId: string; sector: string; direccion: string;
+  tipoVivienda: string; estatusPropiedad: string; estatusActual: string;
+  tieneMascota: boolean; mascotaTipo: string; mascotaColor: string;
+  mascotaIdentificador: boolean; mascotaFoto: string | null;
 }
 
 const emptyState: FormState = {
-  rol: "jefe",
-  refugioId: "",
-  aulaId: "",
-  origen: "",
-  jefeFamiliaId: "",
-  parentesco: "",
-  nombre: "",
-  apellido: "",
-  nacionalidadCedula: "V",
-  cedula: "",
-  telefono: "",
-  edad: "",
-  etapaVida: "",
-  patologia: false,
-  patologiaDescripcion: "",
-  foto: null,
-  estadoId: "",
-  municipioId: "",
-  parroquiaId: "",
-  sector: "",
-  direccion: "",
-  tipoVivienda: "",
-  estatusPropiedad: "",
-  estatusActual: "",
+  rol: "independiente",
+  refugioId: "", moduloId: "", aulaId: "", origen: "",
+  nombre: "", apellido: "", nacionalidadCedula: "V", cedula: "", telefono: "",
+  edad: "", etapaVida: "", numeroBrazalete: "", tipoSangre: "",
+  patologia: false, patologiaDescripcion: "", foto: null,
+  familiares: [],
+  estadoId: "", municipioId: "", parroquiaId: "", sector: "", direccion: "",
+  tipoVivienda: "", estatusPropiedad: "", estatusActual: "",
+  tieneMascota: false, mascotaTipo: "", mascotaColor: "", mascotaIdentificador: false, mascotaFoto: null,
 };
-
-const ROL_OPTIONS: { value: RolRefugiado; label: string; description: string }[] = [
-  {
-    value: "jefe",
-    label: "Jefe de familia",
-    description: "Representante legal de un grupo familiar. Puede tener familiares asociados.",
-  },
-  {
-    value: "familiar",
-    label: "Familiar de un jefe",
-    description: "Llega acompañando a un jefe de familia ya registrado en este refugio.",
-  },
-  {
-    value: "independiente",
-    label: "Persona independiente",
-    description: "Llega completamente sola, sin familiares asociados a este refugio.",
-  },
-];
 
 export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(() => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) return { ...emptyState, ...JSON.parse(saved) };
-    } catch {
-      // ignore
-    }
+    try { const saved = localStorage.getItem(DRAFT_KEY); if (saved) return { ...emptyState, ...JSON.parse(saved) }; } catch { /* ignore */ }
     return emptyState;
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [creado, setCreado] = useState<RefugiadoCreado | null>(null);
-  const [urlVerificacion, setUrlVerificacion] = useState<string>(
-    typeof window !== "undefined" ? `${window.location.origin}/verificar` : "",
-  );
 
-  const [refugios, setRefugios] = useState<Refugio[]>([]);
-  useEffect(() => {
-    (async () => {
-      try {
-        setRefugios(await fetchRefugios());
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
-  const aulas = useMemo(
-    () => refugios.find((r) => r.id === form.refugioId)?.aulas ?? [],
-    [refugios, form.refugioId],
-  );
-
+  const [refugios, setRefugios] = useState<Awaited<ReturnType<typeof fetchRefugios>>>([]);
   const [estados, setEstados] = useState<GeoItem[]>([]);
   const [municipios, setMunicipios] = useState<GeoItem[]>([]);
   const [parroquias, setParroquias] = useState<GeoItem[]>([]);
+
+  useEffect(() => { fetchRefugios().then(setRefugios).catch(() => {}); }, []);
+  useEffect(() => { fetchEstados().then(setEstados).catch(() => {}); }, []);
+
   useEffect(() => {
-    fetchEstados().then(setEstados).catch(() => {});
-  }, []);
-  useEffect(() => {
-    setMunicipios([]);
-    setParroquias([]);
+    setMunicipios([]); setParroquias([]);
     setForm((f) => ({ ...f, municipioId: "", parroquiaId: "" }));
     if (form.estadoId) fetchMunicipios(form.estadoId).then(setMunicipios).catch(() => {});
   }, [form.estadoId]);
@@ -167,21 +124,19 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
       fetchParroquias(form.estadoId, form.municipioId).then(setParroquias).catch(() => {});
   }, [form.estadoId, form.municipioId]);
 
-  const [jefes, setJefes] = useState<JefeOption[]>([]);
-  const [jefeQuery, setJefeQuery] = useState("");
-  useEffect(() => {
-    if (form.rol !== "familiar" || !form.refugioId) return;
-    const q = jefeQuery.trim();
-    const t = setTimeout(() => {
-      buscarJefes(q, form.refugioId)
-        .then(setJefes)
-        .catch(() => setJefes([]));
-    }, 300);
-    return () => clearTimeout(t);
-  }, [jefeQuery, form.rol, form.refugioId]);
+  const modulos = useMemo(() => {
+    const r = refugios.find((x) => x.id === form.refugioId);
+    return r?.modulos ?? [];
+  }, [refugios, form.refugioId]);
 
+  const aulas = useMemo(() => {
+    const mo = modulos.find((x) => x.id === form.moduloId);
+    return mo?.aulas ?? [];
+  }, [modulos, form.moduloId]);
+
+  // Persist draft
   useEffect(() => {
-    if (creado) return; // No persistir tras éxito
+    if (creado) return;
     localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
   }, [form, creado]);
 
@@ -189,21 +144,32 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function updateFamiliar(i: number, key: keyof FamiliarForm, value: string | boolean | null) {
+    setForm((f) => ({
+      ...f,
+      familiares: f.familiares.map((x, idx) => (idx === i ? { ...x, [key]: value } : x)),
+    }));
+  }
+
+  function addFamiliar() {
+    setForm((f) => ({ ...f, familiares: [...f.familiares, emptyFamiliar()] }));
+  }
+
+  function removeFamiliar(i: number) {
+    setForm((f) => ({ ...f, familiares: f.familiares.filter((_, idx) => idx !== i) }));
+  }
+
   function validarPaso(n: number): string | null {
     if (n === 1) {
-      if (!form.refugioId) return "Seleccione un refugio.";
-      if (!form.origen.trim()) return "Indique el origen del refugiado.";
-      if (form.rol === "familiar") {
-        if (!form.jefeFamiliaId) return "Seleccione el jefe de familia al que pertenece.";
-        if (!form.parentesco) return "Indique el parentesco.";
-      }
+      if (!form.refugioId) return "Seleccione un centro.";
+      if (!form.origen.trim()) return "Indique el origen del afectado.";
       if (!form.nombre.trim() || !form.apellido.trim()) return "Nombre y apellido son obligatorios.";
       const edad = Number(form.edad);
       if (!Number.isInteger(edad) || edad < 0 || edad > 150) return "Edad inválida.";
       if (!form.etapaVida) return "Seleccione la etapa de vida.";
     }
     if (n === 2) {
-      if (form.patologia && !form.patologiaDescripcion.trim()) return "Describa la patología.";
+      if (form.patologia && !form.patologiaDescripcion.trim()) return "Describa la patología del jefe.";
     }
     if (n === 3) {
       if (!form.estadoId || !form.municipioId || !form.parroquiaId) return "Complete estado, municipio y parroquia.";
@@ -218,26 +184,16 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
 
   function siguiente() {
     const err = validarPaso(step);
-    if (err) {
-      setError(err);
-      return;
-    }
+    if (err) { setError(err); return; }
     setError(null);
     setStep((s) => Math.min(6, s + 1));
   }
 
-  function anterior() {
-    setError(null);
-    setStep((s) => Math.max(1, s - 1));
-  }
+  function anterior() { setError(null); setStep((s) => Math.max(1, s - 1)); }
 
   async function handleSubmit() {
-    const err = validarPaso(4);
-    if (err) {
-      setError(err);
-      setStep(1);
-      return;
-    }
+    const err = validarPaso(1) || validarPaso(2) || validarPaso(3) || validarPaso(4);
+    if (err) { setError(err); return; }
     setError(null);
     setSubmitting(true);
 
@@ -245,88 +201,113 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
     const municipioNombre = municipios.find((m) => m.id === form.municipioId)?.nombre ?? form.municipioId;
     const parroquiaNombre = parroquias.find((p) => p.id === form.parroquiaId)?.nombre ?? form.parroquiaId;
 
-    const payload: CrearRefugiadoPayload = {
-      refugioId: form.refugioId,
-      aulaId: form.aulaId || null,
-      origen: form.origen.trim(),
-      jefeFamilia: form.rol === "jefe",
-      jefeFamiliaId: form.rol === "familiar" ? form.jefeFamiliaId || null : null,
-      parentesco: form.rol === "familiar" ? form.parentesco || null : null,
-      nombre: form.nombre.trim(),
-      apellido: form.apellido.trim(),
-      nacionalidadCedula: form.cedula.trim() ? form.nacionalidadCedula : null,
-      cedula: form.cedula.trim() || null,
-      telefono: form.telefono.trim() || null,
-      edad: Number(form.edad),
-      etapaVida: form.etapaVida,
-      patologia: form.patologia,
-      patologiaDescripcion: form.patologia ? form.patologiaDescripcion.trim() : null,
-      foto: form.foto,
-      estado: estadoNombre,
-      municipio: municipioNombre,
-      parroquia: parroquiaNombre,
-      sector: form.sector.trim(),
-      direccion: form.direccion.trim(),
-      tipoVivienda: form.tipoVivienda,
-      estatusPropiedad: form.estatusPropiedad,
-      estatusActual: form.estatusActual,
-    };
-
     try {
-      const result = await crearRefugiado(payload);
-      setCreado(result);
-      setUrlVerificacion(`${window.location.origin}/verificar`);
+      if (form.rol === "independiente" || form.familiares.length === 0) {
+        const payload: CrearRefugiadoPayload = {
+          refugioId: form.refugioId, aulaId: form.aulaId || null, origen: form.origen.trim(),
+          jefeFamilia: false, nombre: form.nombre.trim(), apellido: form.apellido.trim(),
+          nacionalidadCedula: form.cedula.trim() ? form.nacionalidadCedula : null,
+          cedula: form.cedula.trim() || null, telefono: form.telefono.trim() || null,
+          edad: Number(form.edad), etapaVida: form.etapaVida,
+          numeroBrazalete: form.numeroBrazalete.trim() || null,
+          tipoSangre: form.tipoSangre || null,
+          patologia: form.patologia,
+          patologiaDescripcion: form.patologia ? form.patologiaDescripcion.trim() : null,
+          foto: form.foto,
+          estado: estadoNombre, municipio: municipioNombre, parroquia: parroquiaNombre,
+          sector: form.sector.trim(), direccion: form.direccion.trim(),
+          tipoVivienda: form.tipoVivienda, estatusPropiedad: form.estatusPropiedad,
+          estatusActual: form.estatusActual,
+        };
+        const result = await crearRefugiado(payload);
+        setCreado(result);
+      } else {
+        const batch: CrearAfectadoBatchPayload = {
+          refugioId: form.refugioId, aulaId: form.aulaId || null, origen: form.origen.trim(),
+          estado: estadoNombre, municipio: municipioNombre, parroquia: parroquiaNombre,
+          sector: form.sector.trim(), direccion: form.direccion.trim(),
+          tipoVivienda: form.tipoVivienda, estatusPropiedad: form.estatusPropiedad,
+          estatusActual: form.estatusActual,
+          jefe: {
+            numeroBrazalete: form.numeroBrazalete.trim() || null,
+            nombre: form.nombre.trim(), apellido: form.apellido.trim(),
+            nacionalidadCedula: form.cedula.trim() ? form.nacionalidadCedula : null,
+            cedula: form.cedula.trim() || null, telefono: form.telefono.trim() || null,
+            edad: Number(form.edad), etapaVida: form.etapaVida,
+            tipoSangre: form.tipoSangre || null,
+            patologia: form.patologia,
+            patologiaDescripcion: form.patologia ? form.patologiaDescripcion.trim() : null,
+            foto: form.foto,
+          },
+          familiares: form.familiares.map((f) => ({
+            parentesco: f.parentesco,
+            numeroBrazalete: f.numeroBrazalete.trim() || null,
+            nombre: f.nombre.trim(), apellido: f.apellido.trim(),
+            nacionalidadCedula: f.nacionalidadCedula || null,
+            cedula: f.cedula.trim() || null,
+            edad: Number(f.edad), etapaVida: f.etapaVida,
+            tipoSangre: f.tipoSangre || null,
+            patologia: f.patologia,
+            patologiaDescripcion: f.patologia ? f.patologiaDescripcion.trim() : null,
+            foto: f.foto,
+          })),
+          mascota: form.tieneMascota
+            ? { tipo: form.mascotaTipo, color: form.mascotaColor.trim() || null,
+                tieneIdentificador: form.mascotaIdentificador, foto: form.mascotaFoto }
+            : null,
+        };
+        const result = await crearAfectadoBatch(batch);
+        setCreado(result.jefe);
+      }
       localStorage.removeItem(DRAFT_KEY);
-      setStep(6); // ir al carnet
-      notifications.show({ message: "Refugiado registrado correctamente", color: "govGreen" });
+      setStep(6);
+      notifications.show({ message: "Registrado correctamente", color: "govGreen" });
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } | { detalles?: unknown } } })?.response?.data;
-      const text =
-        (msg && !Array.isArray(msg) && "error" in msg ? msg.error : null) ??
-        "No se pudo registrar el refugiado. Revise los campos.";
-      setError(text);
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg ?? "No se pudo registrar. Revise los campos.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  // ─── Pantalla de éxito: carnet imprimible ──────────────────────────────
+  // Pantalla de carnet final
   if (creado && step === 6) {
     const refugio = refugios.find((r) => r.id === creado.refugioId);
     const aula = aulas.find((a) => a.id === creado.aulaId) ?? null;
     const carnetData: CarnetData = {
-      id: creado.id,
-      verificacionToken: creado.verificacionToken,
-      nombre: creado.nombre,
-      apellido: creado.apellido,
-      nacionalidadCedula: creado.nacionalidadCedula,
-      cedula: creado.cedula,
-      edad: creado.edad,
-      etapaVida: creado.etapaVida,
-      telefono: creado.telefono,
-      foto: creado.foto,
-      refugio: refugio
-        ? { id: refugio.id, nombre: refugio.nombre, ubicacion: refugio.ubicacion }
-        : { id: creado.refugioId, nombre: creado.refugio?.nombre ?? "Refugio" },
-      aula: aula ? { id: aula.id, nombre: aula.nombre } : null,
-      createdAt: new Date().toISOString(),
+      id: creado.id, verificacionToken: creado.verificacionToken,
+      nombre: creado.nombre, apellido: creado.apellido,
+      nacionalidadCedula: creado.nacionalidadCedula, cedula: creado.cedula,
+      edad: creado.edad, etapaVida: creado.etapaVida,
+      tipoSangre: creado.tipoSangre ?? null,
+      numeroBrazalete: creado.numeroBrazalete ?? null,
+      telefono: creado.telefono, foto: creado.foto,
+      refugio: refugio ? { id: refugio.id, nombre: refugio.nombre, ubicacion: refugio.ubicacion }
+        : { id: creado.refugioId, nombre: creado.refugio?.nombre ?? "Centro" },
+      aula: aula ?? null, createdAt: new Date().toISOString(),
+      familiares: form.familiares.length > 0
+        ? form.familiares.map((f) => ({
+            id: f.uid, nombre: f.nombre, apellido: f.apellido,
+            parentesco: f.parentesco || null, edad: Number(f.edad),
+            tipoSangre: f.tipoSangre || null, numeroBrazalete: f.numeroBrazalete || null,
+          }))
+        : undefined,
+      mascota: form.tieneMascota ? {
+        tipo: form.mascotaTipo, color: form.mascotaColor || null,
+        tieneIdentificador: form.mascotaIdentificador, foto: form.mascotaFoto,
+      } : null,
     };
     return (
       <Stack gap="md">
-        <Title order={2} c="govBlue.7" mb={0} ta="center">
-          Registro completado
-        </Title>
+        <Title order={2} c="govBlue.7" mb={0} ta="center">Registro completado</Title>
         <Text c="dimmed" ta="center">
-          Se ha generado el carnet oficial del refugiado. Imprímalo o guárdelo para su entrega.
+          Se ha generado el carnet oficial. Imprímalo para su entrega.
         </Text>
-        <CarnetRefugiado data={carnetData} urlVerificacion={urlVerificacion} />
-        <Group justify="center" gap="md" className="no-print">
-          <Button color="govBlue" leftSection={<span>🖨️</span>} onClick={() => window.print()}>
-            Imprimir carnet
-          </Button>
-          <Button variant="default" onClick={() => onDone(true)}>
-            Volver al listado
-          </Button>
+        <CarnetRefugiado data={carnetData}
+          urlVerificacion={typeof window !== "undefined" ? `${window.location.origin}/verificar` : ""} />
+        <Group justify="center" className="no-print">
+          <Button color="govBlue" leftSection={<span>🖨️</span>} onClick={() => window.print()}>Imprimir carnet</Button>
+          <Button variant="default" onClick={() => onDone(true)}>Volver al listado</Button>
         </Group>
       </Stack>
     );
@@ -335,436 +316,300 @@ export function CensoForm({ onDone }: { onDone: (created: boolean) => void }) {
   return (
     <Stack gap="lg">
       <Stepper active={step - 1} onStepClick={setStep} allowNextStepsSelect={false} color="govBlue">
-        <Stepper.Step label="Datos" description="Persona y rol" />
-        <Stepper.Step label="Salud" description="Patologías" />
+        <Stepper.Step label="Asignación" description="Centro + Módulo + Aula" />
+        <Stepper.Step label="Datos" description={form.rol === "jefe" ? "Jefe + Familiares" : "Datos del afectado"} />
         <Stepper.Step label="Ubicación" description="Siniestro" />
         <Stepper.Step label="Vivienda" description="Estatus final" />
-        <Stepper.Step label="Foto" description="Identificación visual" />
+        <Stepper.Step label="Mascota" description="Opcional" />
         <Stepper.Step label="Carnet" description="QR de verificación" />
       </Stepper>
 
+      {/* Paso 1: Asignación */}
       {step === 1 && (
         <Card withBorder p="lg" radius="md" bg="white">
           <Stack gap="sm">
-            <Title order={4} c="govBlue.7" mb={0}>
-              Rol en el refugio
-            </Title>
-            <Radio.Group
-              value={form.rol}
-              onChange={(v) => update("rol", v as RolRefugiado)}
-            >
-              <Stack gap="xs">
-                {ROL_OPTIONS.map((opt) => (
-                  <Paper
-                    key={opt.value}
-                    withBorder
-                    p="sm"
-                    radius="sm"
-                    style={{
-                      background: form.rol === opt.value ? "#e3eef7" : "transparent",
-                      borderColor: form.rol === opt.value ? "#1e3a5f" : undefined,
-                    }}
-                  >
-                    <Radio
-                      value={opt.value}
-                      label={
-                        <Box>
-                          <Text fw={600}>{opt.label}</Text>
-                          <Text size="xs" c="dimmed">
-                            {opt.description}
-                          </Text>
-                        </Box>
-                      }
-                    />
-                  </Paper>
-                ))}
-              </Stack>
+            <Radio.Group value={form.rol} onChange={(v) => update("rol", v as RolAfectado)}>
+              <Group gap="lg" mb="sm">
+                <Radio value="independiente" label="Persona independiente" />
+                <Radio value="jefe" label="Jefe de familia" />
+              </Group>
             </Radio.Group>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-              <Field label="Refugio" htmlFor="refugioId" required>
-                <Select
-                  id="refugioId"
-                  value={form.refugioId || null}
-                  onChange={(v) => update("refugioId", v ?? "")}
-                  data={refugios.map((r) => ({ value: r.id, label: r.nombre }))}
-                  placeholder="Seleccione refugio"
-                  comboboxProps={{ withinPortal: true }}
-                  allowDeselect={false}
-                  clearable={false}
-                />
-              </Field>
-              <Field label="Aula del refugio" htmlFor="aulaId">
-                <Select
-                  id="aulaId"
-                  value={form.aulaId || null}
-                  onChange={(v) => update("aulaId", v ?? "")}
-                  data={aulas.map((a) => ({ value: a.id, label: a.nombre }))}
-                  placeholder="Sin asignar"
-                  disabled={aulas.length === 0}
-                  comboboxProps={{ withinPortal: true }}
-                  allowDeselect={false}
-                  clearable={false}
-                />
-              </Field>
-            </SimpleGrid>
-
-            <Field label="Origen del refugiado" htmlFor="origen" required hint="Lugar de procedencia antes del refugio.">
-              <TextInput
-                id="origen"
-                value={form.origen}
-                onChange={(e) => update("origen", e.currentTarget.value)}
-              />
+            <Field label="Centro" htmlFor="refugioId" required>
+              <Select id="refugioId" value={form.refugioId || null}
+                onChange={(v) => update("refugioId", v ?? "")}
+                data={refugios.map((r) => ({ value: r.id, label: r.nombre }))}
+                placeholder="Seleccione centro" comboboxProps={{ withinPortal: true }} clearable={false} />
             </Field>
-
-            {form.rol === "familiar" && (
-              <Paper withBorder p="md" radius="md" bg="govYellow.0">
-                <Field label="Buscar jefe de familia" htmlFor="jefeQ">
-                  <TextInput
-                    id="jefeQ"
-                    value={jefeQuery}
-                    onChange={(e) => setJefeQuery(e.currentTarget.value)}
-                    placeholder="Nombre, apellido o cédula…"
-                  />
-                </Field>
-                {jefes.length > 0 && (
-                  <Stack gap="xs" mt="xs">
-                    {jefes.map((j) => {
-                      const sel = form.jefeFamiliaId === j.id;
-                      return (
-                        <Button
-                          key={j.id}
-                          onClick={() => update("jefeFamiliaId", j.id)}
-                          variant={sel ? "filled" : "outline"}
-                          color={sel ? "govGreen" : "gray"}
-                          fullWidth
-                          justify="flex-start"
-                          styles={{ root: { height: "auto", padding: "0.5rem 0.75rem" } }}
-                        >
-                          <Text size="sm" fw={600}>
-                            {j.nombre} {j.apellido}
-                          </Text>
-                          {j.cedula && (
-                            <Text size="xs" c="dimmed" ml="xs">
-                              · {j.nacionalidadCedula}-{j.cedula}
-                            </Text>
-                          )}
-                          <Text size="xs" c="dimmed" ml="xs">
-                            · {j.edad} años · {j.refugio.nombre}
-                          </Text>
-                        </Button>
-                      );
-                    })}
-                  </Stack>
-                )}
-                {form.jefeFamiliaId && (
-                  <Field label="Parentesco" htmlFor="parentesco" required>
-                    <Select
-                      id="parentesco"
-                      value={form.parentesco || null}
-                      onChange={(v) => update("parentesco", v ?? "")}
-                      data={PARENTESCO_OPTIONS}
-                      comboboxProps={{ withinPortal: true }}
-                      clearable={false}
-                    />
-                  </Field>
-                )}
-              </Paper>
-            )}
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-              <Field label="Nombre" htmlFor="nombre" required>
-                <TextInput id="nombre" value={form.nombre} onChange={(e) => update("nombre", e.currentTarget.value)} />
-              </Field>
-              <Field label="Apellido" htmlFor="apellido" required>
-                <TextInput
-                  id="apellido"
-                  value={form.apellido}
-                  onChange={(e) => update("apellido", e.currentTarget.value)}
-                />
-              </Field>
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-              <Field label="Nacionalidad" htmlFor="nacionalidadCedula">
-                <Select
-                  id="nacionalidadCedula"
-                  value={form.nacionalidadCedula || null}
-                  onChange={(v) => update("nacionalidadCedula", v ?? "")}
-                  data={[
-                    { value: "V", label: "V - Venezolano" },
-                    { value: "E", label: "E - Extranjero" },
-                  ]}
-                  comboboxProps={{ withinPortal: true }}
-                  clearable={false}
-                />
-              </Field>
-              <Box style={{ gridColumn: "span 2" }}>
-                <Field label="Número de cédula" htmlFor="cedula" hint="Opcional si no posee por edad.">
-                  <TextInput id="cedula" value={form.cedula} onChange={(e) => update("cedula", e.currentTarget.value)} />
-                </Field>
-              </Box>
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-              <Field label="Teléfono" htmlFor="telefono">
-                <TextInput
-                  id="telefono"
-                  value={form.telefono}
-                  onChange={(e) => update("telefono", e.currentTarget.value)}
-                />
-              </Field>
-              <Field label="Edad" htmlFor="edad" required>
-                <NumberInput
-                  id="edad"
-                  min={0}
-                  max={150}
-                  value={form.edad === "" ? "" : Number(form.edad)}
-                  onChange={(v) => {
-                    const str = String(v ?? "");
-                    update("edad", str);
-                    const n = Number(str);
-                    if (Number.isInteger(n) && n >= 0) update("etapaVida", etapaVidaPorEdad(n));
-                  }}
-                  hideControls
-                />
-              </Field>
-            </SimpleGrid>
-
-            <Field label="Etapa de vida" htmlFor="etapaVida" required>
-              <Select
-                id="etapaVida"
-                value={form.etapaVida || null}
-                onChange={(v) => update("etapaVida", v ?? "")}
-                data={ETAPA_VIDA_OPTIONS}
-                comboboxProps={{ withinPortal: true }}
-                clearable={false}
-              />
+            <Field label="Módulo" htmlFor="moduloId">
+              <Select id="moduloId" value={form.moduloId || null}
+                onChange={(v) => { update("moduloId", v ?? ""); update("aulaId", ""); }}
+                data={modulos.map((m) => ({ value: m.id, label: m.nombre }))}
+                placeholder="Seleccione módulo" disabled={!form.refugioId}
+                comboboxProps={{ withinPortal: true }} clearable={false} />
+            </Field>
+            <Field label="Aula" htmlFor="aulaId" hint="Camas disponibles">
+              <Select id="aulaId" value={form.aulaId || null}
+                onChange={(v) => update("aulaId", v ?? "")}
+                data={aulas.map((a: { id: string; nombre: string; capacidad?: number | null }) => ({
+                  value: a.id, label: a.capacidad ? `${a.nombre} (${a.capacidad} camas)` : a.nombre,
+                }))}
+                placeholder="Sin asignar" disabled={aulas.length === 0}
+                comboboxProps={{ withinPortal: true }} />
+            </Field>
+            <Field label="Origen del afectado" htmlFor="origen" required hint="Lugar de procedencia antes del centro.">
+              <TextInput id="origen" value={form.origen} onChange={(e) => update("origen", e.currentTarget.value)} />
             </Field>
           </Stack>
         </Card>
       )}
 
+      {/* Paso 2: Datos personales */}
       {step === 2 && (
         <Card withBorder p="lg" radius="md" bg="white">
           <Stack gap="sm">
             <Title order={4} c="govBlue.7" mb={0}>
-              Condición de salud
+              {form.rol === "jefe" ? "Datos del jefe de familia" : "Datos del afectado"}
             </Title>
-            <Paper
-              withBorder
-              p="md"
-              radius="md"
-              style={{
-                background: form.patologia ? "#fff8e1" : "#fafbfc",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "0.75rem",
-              }}
-            >
-              <input
-                id="patologia"
-                type="checkbox"
-                checked={form.patologia}
-                onChange={(e) => update("patologia", e.currentTarget.checked)}
-                style={{ width: 18, height: 18, marginTop: 4, cursor: "pointer" }}
-                aria-label="Posee alguna patología"
-              />
-              <label htmlFor="patologia" style={{ cursor: "pointer", flex: 1 }}>
-                <Text fw={600} size="sm">
-                  ¿Posee alguna patología?
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Active solo si el refugiado presenta una condición de salud relevante.
-                </Text>
-              </label>
-            </Paper>
-            {form.patologia && (
-              <Field label="Especifique la patología" htmlFor="patologiaDesc" required>
-                <Textarea
-                  id="patologiaDesc"
-                  value={form.patologiaDescripcion}
-                  onChange={(e) => update("patologiaDescripcion", e.currentTarget.value)}
-                  autosize
-                  minRows={3}
-                  placeholder="Ej: hipertensión, diabetes, asma…"
-                />
-              </Field>
+            <PersonFields form={form} onChange={update} prefix="" />
+
+            {form.rol === "jefe" && (
+              <>
+                <Divider label="Familiares" labelPosition="center" />
+                <Text size="sm" c="dimmed">Los familiares comparten la misma ubicación y vivienda.</Text>
+                {form.familiares.map((f, i) => (
+                  <Paper key={f.uid} withBorder p="md" radius="md" bg="gray.0">
+                    <Group justify="space-between" mb="xs">
+                      <Text fw={600} size="sm">Familiar {i + 1}</Text>
+                      <Button size="xs" color="govRed" variant="outline" onClick={() => removeFamiliar(i)}>Quitar</Button>
+                    </Group>
+                    <Field label="Parentesco" htmlFor={`parentesco${i}`} required>
+                      <Select id={`parentesco${i}`} value={f.parentesco || null}
+                        onChange={(v) => updateFamiliar(i, "parentesco", v ?? "")}
+                        data={PARENTESCO_OPTIONS} comboboxProps={{ withinPortal: true }} clearable={false} />
+                    </Field>
+                    <PersonFields
+                      form={f}
+                      onChange={(key, value) => updateFamiliar(i, key, value)}
+                      prefix={`fam${i}`} />
+                  </Paper>
+                ))}
+                <Button variant="light" color="govBlue" onClick={addFamiliar} leftSection={<span>+</span>}>
+                  Agregar familiar
+                </Button>
+              </>
             )}
           </Stack>
         </Card>
       )}
 
+      {/* Paso 3: Ubicación */}
       {step === 3 && (
         <Card withBorder p="lg" radius="md" bg="white">
           <Stack gap="sm">
-            <Title order={4} c="govBlue.7" mb={0}>
-              Ubicación del siniestro
-            </Title>
-            <Text size="sm" c="dimmed" mb={0}>
-              Datos de la vivienda afectada por el sismo.
-            </Text>
+            <Text size="sm" c="dimmed" mb={0}>Datos compartidos de la vivienda afectada por el sismo.</Text>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               <Field label="Estado" htmlFor="estadoId" required>
-                <Select
-                  id="estadoId"
-                  value={form.estadoId || null}
+                <Select id="estadoId" value={form.estadoId || null}
                   onChange={(v) => update("estadoId", v ?? "")}
                   data={estados.map((e) => ({ value: e.id, label: e.nombre }))}
-                  comboboxProps={{ withinPortal: true }}
-                  clearable={false}
-                />
+                  comboboxProps={{ withinPortal: true }} />
               </Field>
               <Field label="Municipio" htmlFor="municipioId" required>
-                <Select
-                  id="municipioId"
-                  value={form.municipioId || null}
+                <Select id="municipioId" value={form.municipioId || null}
                   onChange={(v) => update("municipioId", v ?? "")}
                   data={municipios.map((m) => ({ value: m.id, label: m.nombre }))}
-                  disabled={!form.estadoId}
-                  comboboxProps={{ withinPortal: true }}
-                  clearable={false}
-                />
+                  disabled={!form.estadoId} comboboxProps={{ withinPortal: true }} />
               </Field>
               <Field label="Parroquia" htmlFor="parroquiaId" required>
-                <Select
-                  id="parroquiaId"
-                  value={form.parroquiaId || null}
+                <Select id="parroquiaId" value={form.parroquiaId || null}
                   onChange={(v) => update("parroquiaId", v ?? "")}
                   data={parroquias.map((p) => ({ value: p.id, label: p.nombre }))}
-                  disabled={!form.municipioId}
-                  comboboxProps={{ withinPortal: true }}
-                  clearable={false}
-                />
+                  disabled={!form.municipioId} comboboxProps={{ withinPortal: true }} />
               </Field>
             </SimpleGrid>
             <Field label="Sector" htmlFor="sector" required>
-              <TextInput
-                id="sector"
-                value={form.sector}
-                onChange={(e) => update("sector", e.currentTarget.value)}
-              />
+              <TextInput id="sector" value={form.sector} onChange={(e) => update("sector", e.currentTarget.value)} />
             </Field>
             <Field label="Dirección" htmlFor="direccion" required>
-              <Textarea
-                id="direccion"
-                value={form.direccion}
-                onChange={(e) => update("direccion", e.currentTarget.value)}
-                autosize
-                minRows={2}
-              />
+              <Textarea id="direccion" value={form.direccion}
+                onChange={(e) => update("direccion", e.currentTarget.value)} autosize minRows={2} />
             </Field>
           </Stack>
         </Card>
       )}
 
+      {/* Paso 4: Vivienda */}
       {step === 4 && (
         <Card withBorder p="lg" radius="md" bg="white">
           <Stack gap="sm">
-            <Title order={4} c="govBlue.7" mb={0}>
-              Condición de la vivienda
-            </Title>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               <Field label="Tipo de vivienda" htmlFor="tipoVivienda" required>
-                <Select
-                  id="tipoVivienda"
-                  value={form.tipoVivienda || null}
-                  onChange={(v) => update("tipoVivienda", v ?? "")}
-                  data={TIPO_VIVIENDA_OPTIONS}
-                  comboboxProps={{ withinPortal: true }}
-                  clearable={false}
-                />
+                <Select id="tipoVivienda" value={form.tipoVivienda || null}
+                  onChange={(v) => update("tipoVivienda", v ?? "")} data={TIPO_VIVIENDA_OPTIONS}
+                  comboboxProps={{ withinPortal: true }} />
               </Field>
-              <Field label="Estatus de la propiedad" htmlFor="estatusPropiedad" required>
-                <Select
-                  id="estatusPropiedad"
-                  value={form.estatusPropiedad || null}
-                  onChange={(v) => update("estatusPropiedad", v ?? "")}
-                  data={ESTATUS_PROPIEDAD_OPTIONS}
-                  comboboxProps={{ withinPortal: true }}
-                  clearable={false}
-                />
+              <Field label="Estatus propiedad" htmlFor="estatusPropiedad" required>
+                <Select id="estatusPropiedad" value={form.estatusPropiedad || null}
+                  onChange={(v) => update("estatusPropiedad", v ?? "")} data={ESTATUS_PROPIEDAD_OPTIONS}
+                  comboboxProps={{ withinPortal: true }} />
               </Field>
               <Field label="Estatus actual" htmlFor="estatusActual" required>
-                <Select
-                  id="estatusActual"
-                  value={form.estatusActual || null}
-                  onChange={(v) => update("estatusActual", v ?? "")}
-                  data={ESTATUS_ACTUAL_OPTIONS}
-                  comboboxProps={{ withinPortal: true }}
-                  clearable={false}
-                />
+                <Select id="estatusActual" value={form.estatusActual || null}
+                  onChange={(v) => update("estatusActual", v ?? "")} data={ESTATUS_ACTUAL_OPTIONS}
+                  comboboxProps={{ withinPortal: true }} />
               </Field>
             </SimpleGrid>
-
-            <Paper withBorder p="md" radius="md" bg="govBlue.0">
-              <Text fw={700} c="govBlue.7" mb="xs">
-                Resumen
-              </Text>
-              <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.9rem", color: "#1f2933" }}>
-                <li>
-                  <strong>
-                    {form.nombre} {form.apellido}
-                  </strong>{" "}
-                  · {form.edad} años ·{" "}
-                  {form.rol === "jefe"
-                    ? "Jefe de familia"
-                    : form.rol === "familiar"
-                      ? `Familiar (${PARENTESCO_OPTIONS.find((p) => p.value === form.parentesco)?.label ?? "—"})`
-                      : "Persona independiente"}
-                </li>
-                <li>Refugio: {refugios.find((r) => r.id === form.refugioId)?.nombre ?? "—"}</li>
-                <li>{form.patologia ? `Patología: ${form.patologiaDescripcion}` : "Sin patología"}</li>
-                <li>
-                  {form.sector}, {parroquias.find((p) => p.id === form.parroquiaId)?.nombre ?? "—"}
-                </li>
-                <li>
-                  Vivienda {form.tipoVivienda} ·{" "}
-                  {ESTATUS_ACTUAL_OPTIONS.find((e) => e.value === form.estatusActual)?.label}
-                </li>
-              </ul>
-            </Paper>
           </Stack>
         </Card>
       )}
 
+      {/* Paso 5: Mascota */}
       {step === 5 && (
         <Card withBorder p="lg" radius="md" bg="white">
           <Stack gap="sm">
-            <Title order={4} c="govBlue.7" mb={0}>
-              Foto del refugiado
-            </Title>
-            <Text size="sm" c="dimmed">
-              Tome una foto con la cámara web o suba una imagen desde el dispositivo. La foto aparecerá
-              en el carnet y la página de verificación pública.
-            </Text>
-            <CamaraCaptura value={form.foto} onChange={(v) => update("foto", v)} />
+            <Checkbox
+              label="¿Tienen mascota?"
+              checked={form.tieneMascota}
+              onChange={(e) => update("tieneMascota", e.currentTarget.checked)}
+            />
+            {form.tieneMascota && (
+              <>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                  <Field label="Tipo de mascota" htmlFor="mascotaTipo">
+                    <Select id="mascotaTipo" value={form.mascotaTipo || null}
+                      onChange={(v) => update("mascotaTipo", v ?? "")} data={TIPO_MASCOTA_OPTIONS}
+                      comboboxProps={{ withinPortal: true }} />
+                  </Field>
+                  <Field label="Color" htmlFor="mascotaColor">
+                    <TextInput id="mascotaColor" value={form.mascotaColor}
+                      onChange={(e) => update("mascotaColor", e.currentTarget.value)}
+                      placeholder="Ej: Marrón con manchas blancas" />
+                  </Field>
+                </SimpleGrid>
+                <Checkbox
+                  label="Tiene identificador"
+                  checked={form.mascotaIdentificador}
+                  onChange={(e) => update("mascotaIdentificador", e.currentTarget.checked)}
+                />
+                <Field label="Foto de la mascota" htmlFor="mascotaFoto">
+                  <CamaraCaptura value={form.mascotaFoto} onChange={(v) => update("mascotaFoto", v)} />
+                </Field>
+              </>
+            )}
           </Stack>
         </Card>
       )}
 
-      {error && (
-        <Alert color="govRed" role="alert" variant="light">
-          {error}
-        </Alert>
-      )}
+      {error && <Alert color="govRed" role="alert" variant="light">{error}</Alert>}
 
       {step < 6 && (
         <Group justify="space-between" mt="md" className="no-print">
-          <Button onClick={anterior} disabled={step === 1} variant="default">
-            ← Anterior
-          </Button>
+          <Button onClick={anterior} disabled={step === 1} variant="default">← Anterior</Button>
           {step < 5 ? (
-            <Button onClick={siguiente} color="govBlue">
-              Siguiente →
-            </Button>
+            <Button onClick={siguiente} color="govBlue">Siguiente →</Button>
           ) : (
-            <Button onClick={handleSubmit} loading={submitting} color="govBlue">
-              Registrar y generar carnet
-            </Button>
+            <Button onClick={handleSubmit} loading={submitting} color="govBlue">Registrar</Button>
           )}
         </Group>
       )}
     </Stack>
+  );
+}
+
+// ─── Subcomponente para campos de persona (jefe o familiar) ───
+function PersonFields({ form, onChange, prefix }: {
+  form: Record<string, unknown>;
+  onChange: (key: string, value: string | boolean | null) => void;
+  prefix: string;
+}) {
+  const f = form as {
+    nombre: string; apellido: string; nacionalidadCedula: string; cedula: string;
+    telefono: string; edad: string; etapaVida: string; numeroBrazalete: string;
+    tipoSangre: string; patologia: boolean; patologiaDescripcion: string; foto: string | null;
+  };
+  return (
+    <Stack gap="sm">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <Field label="Nombre" htmlFor={`nombre_${prefix}`} required>
+          <TextInput id={`nombre_${prefix}`} value={f.nombre} onChange={(e) => onChange("nombre", e.currentTarget.value)} />
+        </Field>
+        <Field label="Apellido" htmlFor={`apellido_${prefix}`} required>
+          <TextInput id={`apellido_${prefix}`} value={f.apellido} onChange={(e) => onChange("apellido", e.currentTarget.value)} />
+        </Field>
+      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+        <Field label="Nacionalidad" htmlFor={`nac_${prefix}`}>
+          <Select id={`nac_${prefix}`} value={f.nacionalidadCedula || null}
+            onChange={(v) => onChange("nacionalidadCedula", v ?? "")}
+            data={[{ value: "V", label: "V - Venezolano" }, { value: "E", label: "E - Extranjero" }]}
+            comboboxProps={{ withinPortal: true }} clearable={false} />
+        </Field>
+        <Field label="Cédula" htmlFor={`ced_${prefix}`} hint="Opcional si no posee.">
+          <TextInput id={`ced_${prefix}`} value={f.cedula} onChange={(e) => onChange("cedula", e.currentTarget.value)} />
+        </Field>
+        <Field label="Teléfono" htmlFor={`tel_${prefix}`}>
+          <TextInput id={`tel_${prefix}`} value={f.telefono} onChange={(e) => onChange("telefono", e.currentTarget.value)} />
+        </Field>
+      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <Field label="Edad" htmlFor={`edad_${prefix}`} required>
+          <NumberInput id={`edad_${prefix}`} min={0} max={150}
+            value={f.edad === "" ? "" : Number(f.edad)}
+            onChange={(v) => {
+              onChange("edad", String(v ?? ""));
+              const n = Number(v);
+              if (Number.isInteger(n) && n >= 0) onChange("etapaVida", etapaVidaPorEdad(n));
+            }} hideControls />
+        </Field>
+        <Field label="Etapa de vida" htmlFor={`etapa_${prefix}`} required>
+          <Select id={`etapa_${prefix}`} value={f.etapaVida || null}
+            onChange={(v) => onChange("etapaVida", v ?? "")} data={ETAPA_VIDA_OPTIONS}
+            comboboxProps={{ withinPortal: true }} />
+        </Field>
+      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        <Field label="Brazalete" htmlFor={`braz_${prefix}`}>
+          <TextInput id={`braz_${prefix}`} value={f.numeroBrazalete}
+            onChange={(e) => onChange("numeroBrazalete", e.currentTarget.value)}
+            placeholder="Ej: CVM-001" />
+        </Field>
+        <Field label="Tipo de sangre" htmlFor={`ts_${prefix}`}>
+          <Select id={`ts_${prefix}`} value={f.tipoSangre || null}
+            onChange={(v) => onChange("tipoSangre", v ?? "")} data={TIPO_SANGRE_OPTIONS}
+            comboboxProps={{ withinPortal: true }} clearable={false} />
+        </Field>
+      </SimpleGrid>
+      {/* Patología */}
+      <Group align="flex-start" gap="sm" wrap="nowrap">
+        <input id={`pat_${prefix}`} type="checkbox" checked={f.patologia}
+          onChange={(e) => onChange("patologia", e.currentTarget.checked)}
+          style={{ width: 18, height: 18, marginTop: 4, cursor: "pointer" }} />
+        <label htmlFor={`pat_${prefix}`} style={{ cursor: "pointer", flex: 1 }}>
+          <Text fw={600} size="sm">¿Posee alguna patología?</Text>
+          <Text size="xs" c="dimmed">Especifique si presenta una condición de salud relevante.</Text>
+        </label>
+      </Group>
+      {f.patologia && (
+        <Field label="Especifique la patología" htmlFor={`patdesc_${prefix}`} required>
+          <Textarea id={`patdesc_${prefix}`} value={f.patologiaDescripcion}
+            onChange={(e) => onChange("patologiaDescripcion", e.currentTarget.value)}
+            autosize minRows={2} placeholder="Ej: hipertensión, diabetes, asma…" />
+        </Field>
+      )}
+      <Field label="Foto" htmlFor={`foto_${prefix}`}>
+        <CamaraCaptura value={f.foto} onChange={(v) => onChange("foto", v)} />
+      </Field>
+    </Stack>
+  );
+}
+
+// Necesario para el stepper
+function Divider({ label }: { label: string }) {
+  return (
+    <Group align="center" gap="sm">
+      <Box style={{ flex: 1, height: 1, background: "#d6dbe1" }} />
+      <Text size="xs" c="dimmed" fw={600}>{label}</Text>
+      <Box style={{ flex: 1, height: 1, background: "#d6dbe1" }} />
+    </Group>
   );
 }

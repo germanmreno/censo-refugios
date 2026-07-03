@@ -35,6 +35,27 @@ export const ESTATUS_ACTUAL_OPTIONS = [
   { value: "sin_riesgo", label: "Sin riesgo" },
 ];
 
+export const TIPO_SANGRE_OPTIONS = [
+  { value: "O+", label: "O+" },
+  { value: "O-", label: "O-" },
+  { value: "A+", label: "A+" },
+  { value: "A-", label: "A-" },
+  { value: "B+", label: "B+" },
+  { value: "B-", label: "B-" },
+  { value: "AB+", label: "AB+" },
+  { value: "AB-", label: "AB-" },
+  { value: "no_sabe", label: "No sabe" },
+];
+
+export const TIPO_MASCOTA_OPTIONS = [
+  { value: "perro", label: "Perro" },
+  { value: "gato", label: "Gato" },
+  { value: "ave", label: "Ave" },
+  { value: "conejo", label: "Conejo" },
+  { value: "tortuga", label: "Tortuga" },
+  { value: "otros", label: "Otros" },
+];
+
 export function etapaVidaPorEdad(edad: number): string {
   if (edad <= 6) return "primera_infancia";
   if (edad <= 12) return "infancia";

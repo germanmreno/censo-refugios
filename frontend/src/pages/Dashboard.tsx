@@ -11,8 +11,8 @@ export function Dashboard() {
       <Card withBorder padding="lg" radius="md" bg="white">
         <Text c="gray.7" mb="sm">
           {isAdmin
-            ? "Panel de administrador. Use el menú superior para gestionar refugios, refugiados, estadísticas y usuarios."
-            : "Panel de funcionario. Use el menú superior para registrar y consultar refugiados."}
+            ? "Panel de administrador. Use el menú superior para gestionar centros, afectados, estadísticas y usuarios."
+            : "Panel de funcionario. Use el menú superior para registrar y consultar afectados."}
         </Text>
         <Text size="sm" c="dimmed">
           Rol: <strong>{user?.rol}</strong> · Cédula: <strong>{user?.cedula}</strong>

@@ -9,6 +9,7 @@ import { RolUsuario } from "shared";
 import {
   crearRefugiadoSchema,
   actualizarRefugiadoSchema,
+  crearAfectadoBatchSchema,
 } from "../schemas/refugiado.js";
 
 export const refugiadosRouter = Router();
@@ -131,7 +132,7 @@ refugiadosRouter.get("/:id", async (req: Request, res: Response, next: NextFunct
   }
 });
 
-// ─── GET /api/refugiados/:id/carnet  (datos completos + foto + token para impresión) ───
+// ─── GET /api/refugiados/:id/carnet  (datos completos + foto + token + familiares + mascota) ───
 refugiadosRouter.get("/:id/carnet", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const r = await prisma.refugiado.findUnique({
@@ -139,6 +140,25 @@ refugiadosRouter.get("/:id/carnet", async (req: Request, res: Response, next: Ne
       include: {
         refugio: { select: { id: true, nombre: true, ubicacion: true } },
         aula: { select: { id: true, nombre: true } },
+        familiares: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            nacionalidadCedula: true,
+            cedula: true,
+            edad: true,
+            etapaVida: true,
+            parentesco: true,
+            tipoSangre: true,
+            numeroBrazalete: true,
+            foto: true,
+            patologia: true,
+            patologiaDescripcion: true,
+          },
+        },
+        mascota: true,
       },
     });
     if (!r || r.deletedAt) {
@@ -159,11 +179,15 @@ refugiadosRouter.get("/:id/carnet", async (req: Request, res: Response, next: Ne
       cedula: r.cedula,
       edad: r.edad,
       etapaVida: r.etapaVida,
+      tipoSangre: r.tipoSangre,
+      numeroBrazalete: r.numeroBrazalete,
       telefono: r.telefono,
       foto: r.foto,
       refugio: r.refugio,
       aula: r.aula,
       createdAt: r.createdAt,
+      familiares: r.familiares,
+      mascota: r.mascota,
     });
   } catch (err) {
     next(err);
@@ -233,8 +257,8 @@ refugiadosRouter.post("/", async (req: Request, res: Response, next: NextFunctio
 
     // Validar aula pertenezca al refugio
     if (d.aulaId) {
-      const aula = await prisma.aula.findUnique({ where: { id: d.aulaId } });
-      if (!aula || aula.refugioId !== d.refugioId) {
+      const aula = await prisma.aula.findUnique({ where: { id: d.aulaId }, include: { modulo: true } });
+      if (!aula || aula.modulo.refugioId !== d.refugioId) {
         res.status(400).json({ error: "El aula no pertenece al refugio indicado." });
         return;
       }
@@ -314,6 +338,138 @@ refugiadosRouter.post("/", async (req: Request, res: Response, next: NextFunctio
   }
 });
 
+// ─── POST /api/refugiados/batch  (registro familiar completo) ───
+refugiadosRouter.post("/batch", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = crearAfectadoBatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Datos inválidos.", detalles: parsed.error.flatten() });
+      return;
+    }
+    const d = parsed.data;
+
+    const acceso = await verificarAccesoRefugio(req, res, d.refugioId);
+    if (!acceso.ok) return;
+
+    const { randomBytes } = await import("node:crypto");
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Validar brazalete único por centro para jefe
+      if (d.jefe.numeroBrazalete) {
+        const dup = await tx.refugiado.findFirst({
+          where: { refugioId: d.refugioId, numeroBrazalete: d.jefe.numeroBrazalete, deletedAt: null },
+        });
+        if (dup) throw new Error(`Ya existe un afectado con brazalete ${d.jefe.numeroBrazalete} en este centro.`);
+      }
+
+      // Crear jefe
+      const token = randomBytes(24).toString("base64url");
+      const jefe = await tx.refugiado.create({
+        data: {
+          refugioId: d.refugioId,
+          aulaId: d.aulaId ?? null,
+          origen: d.origen,
+          jefeFamilia: true,
+          nombre: d.jefe.nombre.trim(),
+          apellido: d.jefe.apellido.trim(),
+          nacionalidadCedula: d.jefe.cedula?.trim() ? d.jefe.nacionalidadCedula ?? null : null,
+          cedula: d.jefe.cedula?.trim() || null,
+          telefono: d.jefe.telefono?.trim() || null,
+          edad: d.jefe.edad,
+          etapaVida: d.jefe.etapaVida,
+          numeroBrazalete: d.jefe.numeroBrazalete ?? null,
+          tipoSangre: d.jefe.tipoSangre ?? null,
+          patologia: d.jefe.patologia,
+          patologiaDescripcion: d.jefe.patologia ? (d.jefe.patologiaDescripcion?.trim() ?? null) : null,
+          foto: d.jefe.foto ?? null,
+          verificacionToken: token,
+          estado: d.estado,
+          municipio: d.municipio,
+          parroquia: d.parroquia,
+          sector: d.sector,
+          direccion: d.direccion,
+          tipoVivienda: d.tipoVivienda,
+          estatusPropiedad: d.estatusPropiedad,
+          estatusActual: d.estatusActual,
+          registradoPorId: req.user!.sub,
+        },
+      });
+
+      // Crear familiares
+      const familiares: { id: string; nombre: string; apellido: string; parentesco: string | null }[] = [];
+      for (const f of d.familiares) {
+        // Validar brazalete único
+        if (f.numeroBrazalete) {
+          const dup = await tx.refugiado.findFirst({
+            where: { refugioId: d.refugioId, numeroBrazalete: f.numeroBrazalete, deletedAt: null },
+          });
+          if (dup) throw new Error(`Ya existe un afectado con brazalete ${f.numeroBrazalete} en este centro.`);
+        }
+        const familiar = await tx.refugiado.create({
+          data: {
+            refugioId: d.refugioId,
+            aulaId: d.aulaId ?? null,
+            origen: d.origen,
+            jefeFamilia: false,
+            jefeFamiliaId: jefe.id,
+            parentesco: f.parentesco,
+            nombre: f.nombre.trim(),
+            apellido: f.apellido.trim(),
+            nacionalidadCedula: f.cedula?.trim() ? f.nacionalidadCedula ?? null : null,
+            cedula: f.cedula?.trim() || null,
+            telefono: f.telefono?.trim() || null,
+            edad: f.edad,
+            etapaVida: f.etapaVida,
+            numeroBrazalete: f.numeroBrazalete ?? null,
+            tipoSangre: f.tipoSangre ?? null,
+            patologia: f.patologia,
+            patologiaDescripcion: f.patologia ? (f.patologiaDescripcion?.trim() ?? null) : null,
+            foto: f.foto ?? null,
+            estado: d.estado,
+            municipio: d.municipio,
+            parroquia: d.parroquia,
+            sector: d.sector,
+            direccion: d.direccion,
+            tipoVivienda: d.tipoVivienda,
+            estatusPropiedad: d.estatusPropiedad,
+            estatusActual: d.estatusActual,
+            registradoPorId: req.user!.sub,
+          },
+        });
+        familiares.push({ id: familiar.id, nombre: familiar.nombre, apellido: familiar.apellido, parentesco: familiar.parentesco });
+      }
+
+      // Crear mascota (asociada al jefe)
+      if (d.mascota) {
+        await tx.mascota.create({
+          data: {
+            tipo: d.mascota.tipo,
+            color: d.mascota.color ?? null,
+            tieneIdentificador: d.mascota.tieneIdentificador,
+            foto: d.mascota.foto ?? null,
+            afectadoId: jefe.id,
+          },
+        });
+      }
+
+      return {
+        jefe: { ...jefe, verificacionToken: token },
+        familiares,
+      };
+    });
+
+    await logAuditoria(req.user!.sub, "create", "afectado", result.jefe.id, { esBatch: true, cantidadFamiliares: d.familiares.length });
+
+    res.status(201).json(result);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("Ya existe")) {
+      res.status(409).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
 // ─── PATCH /api/refugiados/:id  (solo admin) ───
 refugiadosRouter.patch(
   "/:id",
@@ -339,8 +495,8 @@ refugiadosRouter.patch(
       const d = parsed.data;
 
       if (d.aulaId !== undefined && d.aulaId !== null) {
-        const aula = await prisma.aula.findUnique({ where: { id: d.aulaId } });
-        if (!aula || aula.refugioId !== existente.refugioId) {
+        const aula = await prisma.aula.findUnique({ where: { id: d.aulaId }, include: { modulo: true } });
+        if (!aula || aula.modulo.refugioId !== existente.refugioId) {
           res.status(400).json({ error: "El aula no pertenece al refugio del refugiado." });
           return;
         }

@@ -5,8 +5,6 @@ import { prisma } from "../services/prisma.js";
 export const verificacionRouter = Router();
 
 // ─── GET /api/verificar/:token  (PÚBLICO — sin auth) ───
-// Devuelve los datos del refugiado para que cualquier persona
-// (autoridad, familiar, prensa) pueda validar el carnet impreso.
 verificacionRouter.get("/:token", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token } = req.params;
@@ -25,6 +23,8 @@ verificacionRouter.get("/:token", async (req: Request, res: Response, next: Next
         cedula: true,
         edad: true,
         etapaVida: true,
+        tipoSangre: true,
+        numeroBrazalete: true,
         telefono: true,
         foto: true,
         origen: true,
@@ -44,6 +44,26 @@ verificacionRouter.get("/:token", async (req: Request, res: Response, next: Next
         refugio: { select: { id: true, nombre: true, ubicacion: true } },
         aula: { select: { id: true, nombre: true } },
         jefeFamiliaRef: { select: { id: true, nombre: true, apellido: true, cedula: true } },
+        // Incluir familiares (solo si es jefe)
+        familiares: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            nacionalidadCedula: true,
+            cedula: true,
+            edad: true,
+            etapaVida: true,
+            parentesco: true,
+            tipoSangre: true,
+            numeroBrazalete: true,
+            foto: true,
+            patologia: true,
+            patologiaDescripcion: true,
+          },
+        },
+        mascota: true,
       },
     });
 

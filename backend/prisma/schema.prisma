@@ -47,7 +47,7 @@ model UsuarioRefugio {
 }
 
 // ─────────────────────────────────────────────
-// Refugios y aulas
+// Centros (ex-Refugios), Módulos y Aulas
 // ─────────────────────────────────────────────
 
 model Refugio {
@@ -58,28 +58,42 @@ model Refugio {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  aulas             Aula[]
+  modulos           Modulo[]
   refugiados        Refugiado[]
   funcionarios      UsuarioRefugio[]
 
   @@map("refugios")
 }
 
-model Aula {
+model Modulo {
   id        String   @id @default(uuid())
   refugioId String   @map("refugio_id")
   nombre    String
-  capacidad Int?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  refugio   Refugio    @relation(fields: [refugioId], references: [id], onDelete: Cascade)
-  refugiados Refugiado[]
+  refugio   Refugio @relation(fields: [refugioId], references: [id], onDelete: Cascade)
+  aulas     Aula[]
 
   @@index([refugioId])
+  @@map("modulos")
+}
+
+model Aula {
+  id        String   @id @default(uuid())
+  moduloId  String   @map("modulo_id")
+  nombre    String
+  capacidad Int?
+
+  modulo    Modulo    @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  refugiados Refugiado[]
+
+  @@index([moduloId])
   @@map("aulas")
 }
 
 // ─────────────────────────────────────────────
-// Refugiados (tabla central del censo)
+// Afectados (ex-Refugiados) — tabla central del censo
 // ─────────────────────────────────────────────
 
 model Refugiado {
@@ -87,7 +101,7 @@ model Refugiado {
   refugioId       String   @map("refugio_id")
   aulaId          String?  @map("aula_id")
 
-  // Datos del refugiado
+  // Datos del afectado
   origen          String
   jefeFamilia     Boolean  @map("jefe_familia")
   jefeFamiliaId   String?  @map("jefe_familia_id")
@@ -100,11 +114,15 @@ model Refugiado {
   edad            Int
   etapaVida       String   @map("etapa_vida") // primera_infancia | infancia | adolescencia | juventud | adultez | vejez
 
+  // Datos de identificación
+  numeroBrazalete String? @map("numero_brazalete")
+  tipoSangre      String? @map("tipo_sangre") // O+ | O- | A+ | A- | B+ | B- | AB+ | AB- | no_sabe
+
   // Condición de salud
   patologia           Boolean @default(false)
   patologiaDescripcion String? @map("patologia_descripcion")
 
-  // Foto del refugiado (base64 data URL) y token público de verificación QR
+  // Foto del afectado (base64 data URL) y token público de verificación QR
   foto               String? @db.Text
   verificacionToken  String? @unique @map("verificacion_token")
 
@@ -132,11 +150,33 @@ model Refugiado {
   familiares     Refugiado[] @relation("JefeFamilia")
   registradoPor  Usuario   @relation("RefugiadoRegistradoPor", fields: [registradoPorId], references: [id])
 
+  // Mascota del jefe de familia (sólo existe si jefeFamilia = true)
+  mascota Mascota?
+
   @@index([refugioId])
   @@index([jefeFamiliaId])
   @@index([estado, municipio, parroquia])
   @@index([registradoPorId])
   @@map("refugiados")
+}
+
+// ─────────────────────────────────────────────
+// Mascotas
+// ─────────────────────────────────────────────
+
+model Mascota {
+  id                 String  @id @default(uuid())
+  tipo               String  // perro | gato | ave | conejo | tortuga | otros
+  color              String?
+  tieneIdentificador Boolean @default(false) @map("tiene_identificador")
+  foto               String? @db.Text
+  afectadoId         String  @unique @map("afectado_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  afectado Refugiado @relation(fields: [afectadoId], references: [id], onDelete: Cascade)
+
+  @@index([afectadoId])
+  @@map("mascotas")
 }
 
 // ─────────────────────────────────────────────

@@ -162,8 +162,8 @@ export function VerificarRefugiado() {
                       />
                     </Section>
 
-                    <Section title="Asignación en el refugio">
-                      <KV label="Refugio" value={data.refugiado.refugio.nombre} />
+                    <Section title="Asignación en el centro">
+                      <KV label="Centro" value={data.refugiado.refugio.nombre} />
                       <KV label="Ubicación" value={data.refugiado.refugio.ubicacion} />
                       <KV label="Aula" value={data.refugiado.aula?.nombre ?? "Sin asignar"} />
                       <KV
@@ -176,6 +176,12 @@ export function VerificarRefugiado() {
                               : "Persona independiente"
                         }
                       />
+                      {data.refugiado.tipoSangre && data.refugiado.tipoSangre !== "no_sabe" && (
+                        <KV label="Tipo de sangre" value={data.refugiado.tipoSangre} />
+                      )}
+                      {data.refugiado.numeroBrazalete && (
+                        <KV label="Brazalete" value={data.refugiado.numeroBrazalete} />
+                      )}
                       {data.refugiado.jefeFamiliaRef && (
                         <KV
                           label="Jefe de familia"
@@ -183,6 +189,47 @@ export function VerificarRefugiado() {
                         />
                       )}
                     </Section>
+
+                    {data.refugiado.familiares && data.refugiado.familiares.length > 0 && (
+                      <Section title={`Familiares (${data.refugiado.familiares.length})`}>
+                        {data.refugiado.familiares.map((f) => (
+                          <Box key={f.id} p="xs" mb="xs" style={{ background: "#f9fafb", borderRadius: 4, border: "1px solid #e0e6ed" }}>
+                            <Text size="sm" fw={600}>{f.nombre} {f.apellido}</Text>
+                            <Text size="xs" c="dimmed">
+                              {f.parentesco} · {f.edad} años
+                              {f.tipoSangre && f.tipoSangre !== "no_sabe" ? ` · ${f.tipoSangre}` : ""}
+                              {f.numeroBrazalete ? ` · Brazalete ${f.numeroBrazalete}` : ""}
+                              {f.patologia ? ` · Patología: ${f.patologiaDescripcion ?? "Sí"}` : ""}
+                            </Text>
+                          </Box>
+                        ))}
+                      </Section>
+                    )}
+
+                    {data.refugiado.mascota && (
+                      <Section title="Mascota familiar">
+                        <Group gap="sm" align="flex-start" wrap="nowrap">
+                          {data.refugiado.mascota.foto && (
+                            <Image
+                              src={data.refugiado.mascota.foto}
+                              alt="Mascota"
+                              w={60}
+                              h={60}
+                              fit="cover"
+                              radius="sm"
+                              style={{ border: "1px solid #1e3a5f" }}
+                            />
+                          )}
+                          <Box>
+                            <Text size="sm" fw={600}>{data.refugiado.mascota.tipo}</Text>
+                            <Text size="xs" c="dimmed">
+                              {data.refugiado.mascota.color ? `Color: ${data.refugiado.mascota.color}` : ""}
+                              {data.refugiado.mascota.tieneIdentificador ? " · Con identificador" : " · Sin identificador"}
+                            </Text>
+                          </Box>
+                        </Group>
+                      </Section>
+                    )}
                   </Stack>
                 </Group>
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Button, FileButton, Group, Stack, Text } from "@mantine/core";
+import { Alert, Box, Button, FileButton, Group, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 
 interface Props {
@@ -18,10 +18,18 @@ export function CamaraCaptura({ value, onChange, maxSizeMb = 4 }: Props) {
   const [iniciando, setIniciando] = useState(false);
   const [errorCamara, setErrorCamara] = useState<string | null>(null);
   const [disponible, setDisponible] = useState<boolean | null>(null);
+  const [esContextoSeguro, setEsContextoSeguro] = useState<boolean | null>(null);
 
   useEffect(() => {
+    const seguro =
+      typeof window !== "undefined" &&
+      (window.isSecureContext === true ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    setEsContextoSeguro(seguro);
     setDisponible(
-      typeof navigator !== "undefined" &&
+      seguro &&
+        typeof navigator !== "undefined" &&
         !!navigator.mediaDevices &&
         typeof navigator.mediaDevices.getUserMedia === "function",
     );
@@ -253,8 +261,15 @@ export function CamaraCaptura({ value, onChange, maxSizeMb = 4 }: Props) {
               Sin foto. Puede usar la cámara web o subir una imagen del dispositivo.
             </Text>
           </Box>
+          {esContextoSeguro === false && (
+            <Alert color="govYellow" variant="light" title="Cámara no disponible" mb={0}>
+              La cámara web requiere una conexión segura (HTTPS). Este sitio se está
+              sirviendo por HTTP. Use la opción "Subir imagen" o configure HTTPS en
+              el servidor para habilitar la cámara.
+            </Alert>
+          )}
           <Group gap="sm">
-            {disponible !== false && (
+            {disponible === true && (
               <Button
                 color="govBlue"
                 onClick={() => setCamaraActiva(true)}

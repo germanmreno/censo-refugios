@@ -44,7 +44,7 @@ export function Refugios() {
       const data = await fetchRefugios();
       setRefugios(data);
     } catch {
-      setError("No se pudieron cargar los refugios.");
+      setError("No se pudieron cargar los centros.");
     } finally {
       setLoading(false);
     }
@@ -81,15 +81,15 @@ export function Refugios() {
   }
 
   function handleEliminar(r: Refugio) {
-    if (!confirm(`¿Eliminar el refugio "${r.nombre}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar el centro "${r.nombre}"? Esta acción no se puede deshacer.`)) return;
     eliminarRefugio(r.id)
       .then(() => {
-        notifications.show({ message: "Refugio eliminado", color: "govGreen" });
+         notifications.show({ message: "Centro eliminado", color: "govGreen" });
         cargar();
       })
       .catch((err: unknown) => {
         const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-        notifications.show({ message: msg ?? "No se pudo eliminar el refugio.", color: "govRed" });
+        notifications.show({ message: msg ?? "No se pudo eliminar el centro.", color: "govRed" });
       });
   }
 
@@ -128,7 +128,7 @@ export function Refugios() {
       });
   }
 
-  if (loading) return <Text>Cargando refugios…</Text>;
+  if (loading) return <Text>Cargando centros…</Text>;
   if (error)
     return (
       <Text c="govRed" role="alert">
@@ -144,13 +144,13 @@ export function Refugios() {
         </Title>
         {isAdmin && (
           <Button onClick={abrirNuevo} color="govBlue" size="md">
-            + Nuevo refugio
+            + Nuevo centro
           </Button>
         )}
       </Group>
 
       {refugios.length === 0 ? (
-        <Text c="dimmed">No hay refugios registrados.</Text>
+        <Text c="dimmed">No hay centros registrados.</Text>
       ) : (
         <Stack gap="sm">
           {refugios.map((r) => {
@@ -167,7 +167,7 @@ export function Refugios() {
                       {r.ubicacion}
                     </Text>
                     <Text size="sm" c="dimmed">
-                      {r.aulas.length} aula(s) · {r.ocupacionActual} refugiado(s)
+                       {r.aulas.length} aula(s) · {r.ocupacionActual} afectado(s)
                     </Text>
                   </Stack>
                   <Box style={{ flex: 1, minWidth: 240 }}>
@@ -204,7 +204,7 @@ export function Refugios() {
 
       <Modal
         open={formOpen}
-        title={editing ? "Editar refugio" : "Nuevo refugio"}
+        title={editing ? "Editar centro" : "Nuevo centro"}
         onClose={() => setFormOpen(false)}
       >
         <RefugioForm
@@ -219,7 +219,7 @@ export function Refugios() {
 
       <Modal
         open={detalleId !== null}
-        title={detalle?.nombre ?? "Detalle del refugio"}
+        title={detalle?.nombre ?? "Detalle del centro"}
         onClose={() => {
           setDetalleId(null);
           setDetalle(null);
